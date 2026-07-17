@@ -1,32 +1,74 @@
-:root{
-    --bg:#0B0E14;
-    --bg-elev:#0F131B;
-    --panel:#12161F;
-    --panel-2:#161B26;
-    --border:#1F2733;
-    --border-soft:#181E29;
-    --text:#E4E8EE;
-    --text-dim:#8A93A3;
-    --text-faint:#5A6374;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-    --crit:#E8543E;
-    --crit-bg:rgba(232,84,62,0.12);
-    --crit-soft:rgba(232,84,62,0.35);
-    --warn:#E0A526;
-    --warn-bg:rgba(224,165,38,0.12);
-    --warn-soft:rgba(224,165,38,0.35);
-    --ok:#3DBD8C;
-    --ok-bg:rgba(61,189,140,0.12);
-    --ok-soft:rgba(61,189,140,0.35);
+:root {
+  --bg:#0B0E14;
+  --bg-elev:#0F131B;
+  --panel:#12161F;
+  --panel-2:#161B26;
+  --border:#1F2733;
+  --border-soft:#181E29;
+  --text:#E4E8EE;
+  --text-dim:#8A93A3;
+  --text-faint:#5A6374;
 
-    --accent:#5B8DEF;
-    --accent-bg:rgba(91,141,239,0.12);
-    --accent-soft:rgba(91,141,239,0.4);
+  --crit:#E8543E;
+  --crit-bg:rgba(232,84,62,0.12);
+  --crit-soft:rgba(232,84,62,0.35);
+  --warn:#E0A526;
+  --warn-bg:rgba(224,165,38,0.12);
+  --warn-soft:rgba(224,165,38,0.35);
+  --ok:#3DBD8C;
+  --ok-bg:rgba(61,189,140,0.12);
+  --ok-soft:rgba(61,189,140,0.35);
 
-    --radius:8px;
-    --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
-    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  }
+  --accent:#5B8DEF;
+  --accent-bg:rgba(91,141,239,0.12);
+  --accent-soft:rgba(91,141,239,0.4);
+
+  --radius:8px;
+  --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Light mode variables */
+:root.light-mode {
+  --bg: #F7F9FC;
+  --bg-elev: #FFFFFF;
+  --panel: #FFFFFF;
+  --panel-2: #F1F5F9;
+  --border: #E2E8F0;
+  --border-soft: #ECEEF2;
+  --text: #1A202C;
+  --text-dim: #475569;
+  --text-faint: #94A3B8;
+
+  --crit: #DC2626;
+  --crit-bg: rgba(220,38,38,0.1);
+  --crit-soft: rgba(220,38,38,0.3);
+  --warn: #D97706;
+  --warn-bg: rgba(217,119,6,0.1);
+  --warn-soft: rgba(217,119,6,0.3);
+  --ok: #059669;
+  --ok-bg: rgba(5,150,105,0.1);
+  --ok-soft: rgba(5,150,105,0.3);
+
+  --accent: #5B8DEF;
+  --accent-bg: rgba(91,141,239,0.12);
+  --accent-soft: rgba(91,141,239,0.4);
+
+  --radius:8px;
+  --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Light mode background gradient */
+:root.light-mode body::before {
+  background-image:
+    radial-gradient(ellipse 900px 600px at 15% -10%, rgba(91,141,239,0.1), transparent),
+    radial-gradient(ellipse 700px 500px at 100% 10%, rgba(220,38,38,0.05), transparent);
+}
 
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -633,6 +675,11 @@
     overflow-x:auto;
     white-space:pre;
     position:relative;
+  }
+
+  :root.light-mode .script-box {
+    background: #1E293B;
+    color: #A8E6C5;
   }
   .script-box .kw{color:#7AA2F7;}
   .script-box .cm{color:var(--text-faint);}

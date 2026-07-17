@@ -11,15 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('servers', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('host');
-            $table->string('database_name');
-            $table->string('username');
-            $table->string('password');
-            $table->boolean('active')->default(true);
+        Schema::create('server_contact', function (Blueprint $table) {
+            $table->foreignId('server_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('contact_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
+            $table->primary(['server_id', 'contact_id']);
         });
     }
 
@@ -28,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('servers');
+        Schema::dropIfExists('server_contact');
     }
 };
