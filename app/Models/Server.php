@@ -34,6 +34,12 @@ class Server extends Model
         'last_scanned_at',
         'last_scan_status',
         'last_scan_error',
+        'sql_server_version',
+        'sql_server_edition',
+        'sql_server_capabilities',
+        'sql_server_started_at',
+        'health_score_version',
+        'health_score_details',
     ];
 
     protected $hidden = [
@@ -53,6 +59,9 @@ class Server extends Model
         'minimum_index_pages' => 'integer',
         'last_scanned_at' => 'datetime',
         'last_scan_status' => ScanStatus::class,
+        'sql_server_capabilities' => 'array',
+        'sql_server_started_at' => 'datetime',
+        'health_score_details' => 'array',
     ];
 
     protected $attributes = [
@@ -100,6 +109,16 @@ class Server extends Model
     public function generatedReports(): HasMany
     {
         return $this->hasMany(GeneratedReport::class);
+    }
+
+    public function scanRuns(): HasMany
+    {
+        return $this->hasMany(ServerScanRun::class);
+    }
+
+    public function statisticsStatuses(): HasMany
+    {
+        return $this->hasMany(StatisticsStatus::class);
     }
 
     // Relación a través de SqlIndex
@@ -151,7 +170,7 @@ class Server extends Model
 
     public function hasRecentScan(): bool
     {
-        return $this->last_scanned_at !== null && 
+        return $this->last_scanned_at !== null &&
                $this->last_scanned_at->diffInHours(now()) < 24;
     }
 

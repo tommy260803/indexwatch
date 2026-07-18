@@ -17,7 +17,7 @@ enum RecommendedAction: string
     public static function fromFragmentation(float $fragmentationPercent, float $warningThreshold, float $criticalThreshold): self
     {
         return match (true) {
-            $fragmentationPercent > $criticalThreshold => self::Rebuild,
+            $fragmentationPercent >= $criticalThreshold => self::Rebuild,
             $fragmentationPercent >= $warningThreshold => self::Reorganize,
             default => self::Ignore,
         };

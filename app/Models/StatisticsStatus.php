@@ -19,6 +19,10 @@ class StatisticsStatus extends Model
     ];
 
     protected $casts = [
+        'object_id' => 'integer',
+        'stats_id' => 'integer',
+        'row_count' => 'integer',
+        'modification_count' => 'integer',
         'modification_ratio' => 'decimal:4',
         'last_updated_at' => 'datetime',
         'scanned_at' => 'datetime',

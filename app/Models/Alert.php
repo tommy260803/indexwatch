@@ -107,31 +107,31 @@ class Alert extends Model
     public function scopePending($query)
     {
         return $query->whereIn('status', [
-            AlertStatus::PENDING,
-            AlertStatus::SENT,
-            AlertStatus::AWAITING_RESPONSE,
+            AlertStatus::Pending,
+            AlertStatus::Sent,
+            AlertStatus::AwaitingResponse,
         ]);
     }
 
     public function scopeOpen($query)
     {
         return $query->whereIn('status', [
-            AlertStatus::PENDING,
-            AlertStatus::SENT,
-            AlertStatus::AWAITING_RESPONSE,
-            AlertStatus::APPROVED,
-            AlertStatus::SCHEDULED,
-            AlertStatus::RUNNING,
+            AlertStatus::Pending,
+            AlertStatus::Sent,
+            AlertStatus::AwaitingResponse,
+            AlertStatus::Approved,
+            AlertStatus::Scheduled,
+            AlertStatus::Running,
         ]);
     }
 
     public function scopeClosed($query)
     {
         return $query->whereIn('status', [
-            AlertStatus::SUCCEEDED,
-            AlertStatus::FAILED,
-            AlertStatus::EXPIRED,
-            AlertStatus::DISMISSED,
+            AlertStatus::Succeeded,
+            AlertStatus::Failed,
+            AlertStatus::Expired,
+            AlertStatus::Dismissed,
         ]);
     }
 
@@ -155,68 +155,68 @@ class Alert extends Model
     public function isOpen(): bool
     {
         return in_array($this->status, [
-            AlertStatus::PENDING,
-            AlertStatus::SENT,
-            AlertStatus::AWAITING_RESPONSE,
-            AlertStatus::APPROVED,
-            AlertStatus::SCHEDULED,
-            AlertStatus::RUNNING,
+            AlertStatus::Pending,
+            AlertStatus::Sent,
+            AlertStatus::AwaitingResponse,
+            AlertStatus::Approved,
+            AlertStatus::Scheduled,
+            AlertStatus::Running,
         ]);
     }
 
     public function isClosed(): bool
     {
         return in_array($this->status, [
-            AlertStatus::SUCCEEDED,
-            AlertStatus::FAILED,
-            AlertStatus::EXPIRED,
-            AlertStatus::DISMISSED,
+            AlertStatus::Succeeded,
+            AlertStatus::Failed,
+            AlertStatus::Expired,
+            AlertStatus::Dismissed,
         ]);
     }
 
     public function isPending(): bool
     {
-        return $this->status === AlertStatus::PENDING;
+        return $this->status === AlertStatus::Pending;
     }
 
     public function isApproved(): bool
     {
-        return $this->status === AlertStatus::APPROVED;
+        return $this->status === AlertStatus::Approved;
     }
 
     public function isScheduled(): bool
     {
-        return $this->status === AlertStatus::SCHEDULED;
+        return $this->status === AlertStatus::Scheduled;
     }
 
     public function isRunning(): bool
     {
-        return $this->status === AlertStatus::RUNNING;
+        return $this->status === AlertStatus::Running;
     }
 
     public function isSucceeded(): bool
     {
-        return $this->status === AlertStatus::SUCCEEDED;
+        return $this->status === AlertStatus::Succeeded;
     }
 
     public function isFailed(): bool
     {
-        return $this->status === AlertStatus::FAILED;
+        return $this->status === AlertStatus::Failed;
     }
 
     public function isExpired(): bool
     {
-        return $this->status === AlertStatus::EXPIRED;
+        return $this->status === AlertStatus::Expired;
     }
 
     public function isDismissed(): bool
     {
-        return $this->status === AlertStatus::DISMISSED;
+        return $this->status === AlertStatus::Dismissed;
     }
 
     public function canBeApproved(): bool
     {
-        return $this->isPending() || $this->status === AlertStatus::SENT;
+        return $this->isPending() || $this->status === AlertStatus::Sent;
     }
 
     public function canBeScheduled(): bool
@@ -231,22 +231,22 @@ class Alert extends Model
 
     public function needsApproval(): bool
     {
-        return $this->isPending() || $this->status === AlertStatus::SENT;
+        return $this->isPending() || $this->status === AlertStatus::Sent;
     }
 
     public function getStatusLabel(): string
     {
         return match($this->status) {
-            AlertStatus::PENDING => 'Pendiente',
-            AlertStatus::SENT => 'Enviada',
-            AlertStatus::AWAITING_RESPONSE => 'Esperando respuesta',
-            AlertStatus::APPROVED => 'Aprobada',
-            AlertStatus::SCHEDULED => 'Programada',
-            AlertStatus::RUNNING => 'Ejecutando',
-            AlertStatus::SUCCEEDED => 'Completada',
-            AlertStatus::FAILED => 'Falló',
-            AlertStatus::EXPIRED => 'Expirada',
-            AlertStatus::DISMISSED => 'Descartada',
+            AlertStatus::Pending => 'Pendiente',
+            AlertStatus::Sent => 'Enviada',
+            AlertStatus::AwaitingResponse => 'Esperando respuesta',
+            AlertStatus::Approved => 'Aprobada',
+            AlertStatus::Scheduled => 'Programada',
+            AlertStatus::Running => 'Ejecutando',
+            AlertStatus::Succeeded => 'Completada',
+            AlertStatus::Failed => 'Falló',
+            AlertStatus::Expired => 'Expirada',
+            AlertStatus::Dismissed => 'Descartada',
             default => 'Desconocido',
         };
     }
@@ -254,9 +254,9 @@ class Alert extends Model
     public function getSeverityLabel(): string
     {
         return match($this->severity) {
-            AlertSeverity::INFO => 'Información',
-            AlertSeverity::WARNING => 'Advertencia',
-            AlertSeverity::CRITICAL => 'Crítica',
+            AlertSeverity::Info => 'Información',
+            AlertSeverity::Warning => 'Advertencia',
+            AlertSeverity::Critical => 'Crítica',
             default => 'Desconocido',
         };
     }
@@ -264,9 +264,9 @@ class Alert extends Model
     public function getSeverityColor(): string
     {
         return match($this->severity) {
-            AlertSeverity::INFO => 'blue',
-            AlertSeverity::WARNING => 'yellow',
-            AlertSeverity::CRITICAL => 'red',
+            AlertSeverity::Info => 'blue',
+            AlertSeverity::Warning => 'yellow',
+            AlertSeverity::Critical => 'red',
             default => 'gray',
         };
     }
@@ -274,14 +274,14 @@ class Alert extends Model
     public function getTypeLabel(): string
     {
         return match($this->alert_type) {
-            AlertType::FRAGMENTATION => 'Fragmentación',
-            AlertType::INACTIVE => 'Índice inactivo',
-            AlertType::MISSING_INDEX => 'Índice faltante',
-            AlertType::DUPLICATE_INDEX => 'Índice duplicado',
-            AlertType::HEAP => 'Heap (sin clúster)',
-            AlertType::STALE_STATISTICS => 'Estadísticas obsoletas',
-            AlertType::PAGE_SPLITS => 'Page splits excesivos',
-            AlertType::FILL_FACTOR => 'Fill factor óptimo',
+            AlertType::Fragmentation => 'Fragmentación',
+            AlertType::Inactive => 'Índice inactivo',
+            AlertType::MissingIndex => 'Índice faltante',
+            AlertType::DuplicateIndex => 'Índice duplicado',
+            AlertType::Heap => 'Heap (sin clúster)',
+            AlertType::StaleStatistics => 'Estadísticas obsoletas',
+            AlertType::PageSplits => 'Page splits excesivos',
+            AlertType::FillFactor => 'Fill factor óptimo',
             default => 'Desconocido',
         };
     }
@@ -329,7 +329,7 @@ class Alert extends Model
 
         if ($this->executed_at) {
             $history[] = [
-                'action' => $this->status === AlertStatus::SUCCEEDED ? 'succeeded' : 'failed',
+                'action' => $this->status === AlertStatus::Succeeded ? 'succeeded' : 'failed',
                 'at' => $this->executed_at,
             ];
         }

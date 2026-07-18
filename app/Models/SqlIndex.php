@@ -51,8 +51,11 @@ class SqlIndex extends Model
         'is_unique' => 'boolean',
         'is_primary_key' => 'boolean',
         'is_disabled' => 'boolean',
+        'object_id' => 'integer',
+        'index_id_native' => 'integer',
         'fragmentation_percent' => 'decimal:2',
         'size_mb' => 'decimal:2',
+        'page_count' => 'integer',
         'fill_factor' => 'integer',
         'optimal_fill_factor' => 'integer',
         'user_seeks' => 'integer',
@@ -101,21 +104,31 @@ class SqlIndex extends Model
         return $this->hasMany(MaintenanceAction::class);
     }
 
+    public function operationalSnapshots(): HasMany
+    {
+        return $this->hasMany(IndexOperationalSnapshot::class);
+    }
+
     public function latestSnapshot(): HasOne
     {
         return $this->hasOne(IndexSnapshot::class)->latestOfMany('scanned_at');
+    }
+
+    public function latestOperationalSnapshot(): HasOne
+    {
+        return $this->hasOne(IndexOperationalSnapshot::class)->latestOfMany('sampled_at');
     }
 
     // ============ SCOPES ============
 
     public function scopeActive($query)
     {
-        return $query->where('status', IndexRecordStatus::ACTIVE);
+        return $query->where('status', IndexRecordStatus::Active);
     }
 
     public function scopeDropped($query)
     {
-        return $query->where('status', IndexRecordStatus::DROPPED);
+        return $query->where('status', IndexRecordStatus::Dropped);
     }
 
     public function scopeFragmented($query, $threshold = 30)
@@ -126,12 +139,12 @@ class SqlIndex extends Model
     public function scopeUnused($query, int $minObservationDays = 30)
     {
         return $query->where('user_seeks', 0)
-                     ->where('user_scans', 0)
-                     ->where('user_lookups', 0)
-                     ->where(function($q) use ($minObservationDays) {
-                         $q->whereNull('usage_stats_since')
-                           ->orWhere('usage_stats_since', '<=', now()->subDays($minObservationDays));
-                     });
+            ->where('user_scans', 0)
+            ->where('user_lookups', 0)
+            ->where(function ($q) use ($minObservationDays) {
+                $q->whereNull('usage_stats_since')
+                    ->orWhere('usage_stats_since', '<=', now()->subDays($minObservationDays));
+            });
     }
 
     // ============ MÉTODOS DE UTILIDAD ============
@@ -143,38 +156,38 @@ class SqlIndex extends Model
 
     public function isActive(): bool
     {
-        return $this->status === IndexRecordStatus::ACTIVE;
+        return $this->status === IndexRecordStatus::Active;
     }
 
     public function isDropped(): bool
     {
-        return $this->status === IndexRecordStatus::DROPPED;
+        return $this->status === IndexRecordStatus::Dropped;
     }
 
     public function isFragmented($threshold = 30): bool
     {
-        return $this->fragmentation_percent !== null && 
+        return $this->fragmentation_percent !== null &&
                $this->fragmentation_percent >= $threshold;
     }
 
     public function isCriticalFragmented($threshold = 50): bool
     {
-        return $this->fragmentation_percent !== null && 
+        return $this->fragmentation_percent !== null &&
                $this->fragmentation_percent >= $threshold;
     }
 
     public function isUnused(int $minObservationDays = 30): bool
     {
-        return $this->user_seeks === 0 && 
-               $this->user_scans === 0 && 
-               $this->user_lookups === 0 && 
-               !$this->usageStatsAreRecent($minObservationDays);
+        return $this->user_seeks === 0 &&
+               $this->user_scans === 0 &&
+               $this->user_lookups === 0 &&
+               ! $this->usageStatsAreRecent($minObservationDays);
     }
 
     public function hasUsageStats(): bool
     {
-        return $this->user_seeks > 0 || 
-               $this->user_scans > 0 || 
+        return $this->user_seeks > 0 ||
+               $this->user_scans > 0 ||
                $this->user_lookups > 0;
     }
 
@@ -198,23 +211,23 @@ class SqlIndex extends Model
     {
         $reads = $this->getTotalReads();
         $writes = $this->getTotalWrites();
-        
+
         if ($reads === 0 && $writes === 0) {
             return 0.0;
         }
-        
+
         if ($writes === 0) {
             return $reads > 0 ? 100.0 : 0.0;
         }
-        
-        return ($reads / $writes);
+
+        return $reads / $writes;
     }
 
     public function getDisplayName(): string
     {
         $type = $this->is_primary_key ? 'PK' : ($this->is_unique ? 'UNIQUE' : '');
         $status = $this->is_disabled ? ' [DISABLED]' : '';
-        
-        return $this->qualifiedName() . $status . ($type ? " ({$type})" : '');
+
+        return $this->qualifiedName().$status.($type ? " ({$type})" : '');
     }
 }

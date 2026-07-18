@@ -13,7 +13,7 @@ class IndexSnapshot extends Model
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'sql_index_id', 'fragmentation_percent', 'size_mb', 'page_count',
+        'server_scan_run_id', 'sql_index_id', 'fragmentation_percent', 'size_mb', 'page_count',
         'record_count', 'seeks', 'scans', 'lookups', 'writes', 'fill_factor',
         'index_last_used_at', 'scanned_at',
     ];
@@ -22,6 +22,12 @@ class IndexSnapshot extends Model
         'fragmentation_percent' => 'decimal:2',
         'size_mb' => 'decimal:2',
         'fill_factor' => 'integer',
+        'page_count' => 'integer',
+        'record_count' => 'integer',
+        'seeks' => 'integer',
+        'scans' => 'integer',
+        'lookups' => 'integer',
+        'writes' => 'integer',
         'index_last_used_at' => 'datetime',
         'scanned_at' => 'datetime',
     ];
