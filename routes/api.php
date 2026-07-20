@@ -4,13 +4,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WhatsAppWebhookController;
 
-// ---------- Webhook (no auth) ----------
+// ---------- Webhook (no auth, rate limited) ----------
 Route::get('/webhook/whatsapp',  [WhatsAppWebhookController::class, 'verify']);
-Route::post('/webhook/whatsapp', [WhatsAppWebhookController::class, 'handle']);
-Route::post('/v1/channels/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
+Route::post('/webhook/whatsapp', [WhatsAppWebhookController::class, 'handle'])
+    ->middleware('throttle:100,1');
+Route::post('/v1/channels/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle'])
+    ->middleware('throttle:100,1');
 
-// ---------- Auth required ----------
-Route::middleware('auth:sanctum')->group(function () {
+// ---------- Auth required + rate limited ----------
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
 
     // Dashboard

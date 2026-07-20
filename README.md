@@ -1,58 +1,136 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# IndexWatch v2
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema de monitoreo y mantenimiento de índices SQL Server, con notificaciones por WhatsApp y reportes bajo demanda.
 
-## About Laravel
+**Stack:** Laravel 13 / PHP 8.3 / Tailwind 4 / Vite / PostgreSQL / SQLite (dev)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Estado
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+[![CI](https://github.com/your-org/indexwatch/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/indexwatch/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-54%20passed-green)](https://github.com/your-org/indexwatch)
+[![PHP](https://img.shields.io/badge/php-^8.3-blue)](https://php.net)
+[![Laravel](https://img.shields.io/badge/laravel-^13.8-red)](https://laravel.com)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Arquitectura
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```text
+                     ┌──────────────────┐
+                     │   PostgreSQL      │  (Neon)
+                     │  Plano de control │
+                     └────────┬─────────┘
+                              │
+    ┌─────────────────────────┼─────────────────────────┐
+    │                         │                         │
+    v                         v                         v
+┌─────────┐           ┌──────────────┐           ┌──────────────┐
+│ Scanner │           │  Dashboard   │           │  WhatsApp    │
+│  (Job)  │──────────>│  (Blade/API) │<──────────>  Webhook     │
+└────┬────┘           └──────────────┘           └──────┬───────┘
+     │                                                  │
+     v                                                  v
+┌──────────────┐                              ┌──────────────────┐
+│ SQL Server   │                              │  Autorización    │
+│ (monitoreado)│                              │  + Ventanas      │
+└──────────────┘                              │  + Execute Job   │
+                                              └──────────────────┘
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Características principales
 
-## Contributing
+| Funcionalidad | Estado | Descripción |
+|--------------|--------|-------------|
+| **Escáner SQL Server** | ✅ | Conexión dinámica, DMV (fragmentación, uso, stats, missing indexes, page splits) |
+| **Alertas inteligentes** | ✅ | Fabricación, fill factor, page splits, estadísticas obsoletas, missing indexes, unused, duplicados, heaps |
+| **Health Score** | ✅ | Algoritmo versionado 0-100 por servidor |
+| **WhatsApp** | ✅ | Webhook con HMAC, idempotencia, catálogo de acciones, AuthorizedContact |
+| **Mantenimiento** | ✅ | Ventanas por servidor, T-SQL generator, ExecuteMaintenanceJob con locks y auditoría |
+| **Dashboard** | ✅ | KPIs reales, alertas, índices paginados, polling 30s |
+| **Auditoría** | ✅ | append-only, paginable, filtrable por servidor/actor/acción/fuente |
+| **Reportes** | ✅ | HTML/CSV bajo demanda, asíncronos, expiran 7 días |
+| **Auth/Roles** | ✅ | admin / operator / viewer, policies, Sanctum API tokens |
+| **Rate limiting** | ✅ | Webhook 100/min, API 60/min |
+| **Health check** | ✅ | `/up` endpoint |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Instalación local
 
-## Code of Conduct
+```bash
+# Requisitos: PHP 8.3+, Composer, Node.js, SQLite
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+cp .env.example .env
+composer install
+php artisan key:generate
+php artisan migrate --seed
+npm install && npm run build
+php artisan serve
+```
 
-## Security Vulnerabilities
+## Comandos principales
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+# Escanear servidores
+php artisan indexwatch:scan              # Todos (cola)
+php artisan indexwatch:scan --sync       # Síncrono
+php artisan indexwatch:scan --server=1 --sync  # Un servidor
 
-## License
+# Verificar conectividad
+php artisan indexwatch:verify 1
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Cola de trabajos
+php artisan queue:work --queue=scans --tries=3 --timeout=300
+
+# Tests
+php artisan test
+
+# Migraciones
+php artisan migrate:fresh --seed
+```
+
+## API REST
+
+| Método | Ruta | Rol |
+|--------|------|-----|
+| GET | `/api/dashboard/data` | viewer |
+| GET/POST | `/api/servers` | viewer/admin |
+| PATCH/DELETE | `/api/servers/{id}` | admin |
+| POST | `/api/servers/{id}/test-connection` | admin |
+| GET/POST/PATCH/DELETE | `/api/maintenance-windows` | admin |
+| GET | `/api/maintenance-actions` | operator |
+| POST | `/api/maintenance-actions/{id}/cancel` | operator |
+| GET | `/api/audit-logs` | operator |
+| POST | `/api/reports` | operator |
+| GET | `/api/reports/{id}/download` | operator |
+
+## Flujo de monitoreo
+
+```text
+Scheduler -> indexwatch:scan
+  -> ScanServerJob por servidor activo
+  -> SqlServerConnectionFactory (conexión dinámica)
+  -> SqlServerInspectorService (DMV: inventory, fragmentation, usage, stats, page splits, missing indexes)
+  -> ScanPersistenceService (upsert en PostgreSQL)
+  -> AlertDetectionService (fragmentación, fill factor, stats, unused, duplicate, heap, missing)
+  -> Dashboard solo consulta PostgreSQL
+```
+
+## Flujo de aprobación (WhatsApp)
+
+```text
+WhatsApp button -> Webhook (HMAC + idempotencia)
+  -> AuthorizedContact validation
+  -> Alert -> approved / scheduled
+  -> ExecuteMaintenanceJob (lock + ventana + T-SQL + auditoría + notificación)
+  -> ScanServerJob (verificación post-ejecución)
+```
+
+## Documentación
+
+- [Plan de implementación](PLAN_IMPLEMENTACION_INDEXWATCH_V2.md)
+- [Plan de trabajo (equipo 5)](PLAN_TRABAJO_INDEXWATCH_V2_EQUIPO_5.md)
+- [Handoff integrantes](docs/HANDOFF_INTEGRANTES.md)
+- [Runbook Integrante 2 (Scanner)](docs/INTEGRANTE_2_RUNBOOK.md)
+- [Runbook Integrante 3 (Analytics)](docs/runbooks/integrante3.md)
+- [Guía instalación local](INSTALACION_LOCAL.md)
+
+## Licencia
+
+MIT
