@@ -177,6 +177,7 @@ class WhatsAppWebhookTest extends TestCase
     public function test_webhook_approves_alert_and_schedules(): void
     {
         $this->mockWhatsAppHttp();
+        \Illuminate\Support\Facades\Queue::fake();
 
         config([
             'services.whatsapp.token' => 'test_token',
@@ -200,12 +201,16 @@ class WhatsAppWebhookTest extends TestCase
             'active' => true,
         ]);
 
-        // Create a maintenance window for today - use explicit times that don't cross midnight
+        // Create a maintenance window for today that includes the current time
+        $now = now($server->timezone);
+        $startHour = max(0, $now->hour - 1);
+        $endHour = min(23, $now->hour + 1);
+        
         $today = (int) now($server->timezone)->format('w');
         $server->maintenanceWindows()->create([
             'day_of_week' => $today,
-            'start_time' => '22:00',
-            'end_time' => '23:00',
+            'start_time' => sprintf('%02d:00', $startHour),
+            'end_time' => sprintf('%02d:00', $endHour),
             'active' => true,
         ]);
 

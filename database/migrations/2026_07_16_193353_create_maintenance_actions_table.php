@@ -23,6 +23,7 @@ return new class extends Migration
             $table->text('sql_script')->nullable();
             $table->timestamp('executed_at')->nullable();
             $table->unsignedInteger('duration_seconds')->nullable();
+            $table->text('error')->nullable();
             $table->text('error_message')->nullable();
             $table->foreignId('initiated_by_contact_id')->nullable()->constrained('contacts')->nullOnDelete();
             $table->timestamps();

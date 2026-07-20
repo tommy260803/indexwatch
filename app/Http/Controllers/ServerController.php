@@ -6,9 +6,13 @@ use App\Http\Requests\StoreServerRequest;
 use App\Http\Requests\UpdateServerRequest;
 use App\Models\Contact;
 use App\Models\Server;
+use App\Services\SqlServer\SqlServerConnectionFactory;
+use App\Services\SqlServer\SqlServerErrorSanitizer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -110,6 +114,34 @@ class ServerController extends Controller
         return redirect()
             ->route('servers.index')
             ->with('status', 'Servidor eliminado lógicamente.');
+    }
+
+    /**
+     * API: Test SQL Server connection without exposing secrets.
+     */
+    public function testConnection(
+        Server $server,
+        SqlServerConnectionFactory $connections,
+        SqlServerErrorSanitizer $errors,
+    ): JsonResponse {
+        Gate::authorize('testConnection', $server);
+
+        try {
+            $connection = $connections->connect($server);
+            $connections->disconnect($server);
+
+            return response()->json([
+                'status' => 'success',
+                'server' => $server->name,
+                'host' => $server->host,
+                'database' => $server->database_name,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => 'error',
+                'error' => $errors->sanitize($e, $server),
+            ], 422);
+        }
     }
 
     protected function payloadFromRequest(array $data, bool $updating = false): array

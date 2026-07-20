@@ -162,13 +162,13 @@ class ExecuteMaintenanceJob implements ShouldQueue
             // Execute the T-SQL
             $connection->statement($sql);
 
-            $durationMs = (int) round((microtime(true) - $started) * 1000);
+$durationSeconds = (int) round((microtime(true) - $started));
 
             // Update action with success
             $action->forceFill([
                 'status'       => MaintenanceStatus::Succeeded,
-                'finished_at'  => now(),
-                'duration_ms'  => $durationMs,
+                'executed_at'  => now(),
+                'duration_seconds'  => $durationSeconds,
                 'result'       => 'Executed successfully',
             ])->save();
 
@@ -226,12 +226,12 @@ class ExecuteMaintenanceJob implements ShouldQueue
 
         } catch (Throwable $e) {
             $safeError = $errors->sanitize($e, $server);
-            $durationMs = $action->started_at ? $action->started_at->diffInMilliseconds(now()) : 0;
+            $durationSeconds = $action->started_at ? (int) round($action->started_at->diffInSeconds(now())) : 0;
 
             $action->forceFill([
                 'status'       => MaintenanceStatus::Failed,
-                'finished_at'  => now(),
-                'duration_ms'  => $durationMs,
+                'executed_at'  => now(),
+                'duration_seconds'  => $durationSeconds,
                 'error'        => $safeError,
             ])->save();
 
@@ -247,6 +247,8 @@ class ExecuteMaintenanceJob implements ShouldQueue
                 'server_id'                 => $server->id,
                 'alert_id'                  => $alert->id,
                 'maintenance_action_id'     => $action->id,
+                'auditable_type'            => MaintenanceAction::class,
+                'auditable_id'              => $action->id,
                 'actor_type'                => 'system',
                 'actor_name'                => 'ExecuteMaintenanceJob',
                 'source'                    => 'job',
@@ -288,14 +290,16 @@ class ExecuteMaintenanceJob implements ShouldQueue
         ])->save();
 
         AuditLog::create([
-            'server_id' => $alert->server_id,
-            'alert_id'  => $alert->id,
-            'actor_type'    => 'system',
-            'actor_name'    => 'ExecuteMaintenanceJob',
-            'source'        => 'job',
-            'action'        => 'maintenance_result',
-            'status'        => 'failed',
-            'description'   => $reason,
+            'server_id'      => $alert->server_id,
+            'alert_id'       => $alert->id,
+            'auditable_type' => Alert::class,
+            'auditable_id'   => $alert->id,
+            'actor_type'     => 'system',
+            'actor_name'     => 'ExecuteMaintenanceJob',
+            'source'         => 'job',
+            'action'         => 'maintenance_result',
+            'status'         => 'failed',
+            'description'    => $reason,
         ]);
 
         if ($contact) {

@@ -163,7 +163,7 @@ class TsqlGeneratorService
         return $index;
     }
 
-    private function supportsOnline(Server $server): bool
+    private function supportsOnline(\App\Models\Server $server): bool
     {
         $caps = $server->sql_server_capabilities ?? [];
         return ($caps['supports_online_index_operations'] ?? false) === true;
