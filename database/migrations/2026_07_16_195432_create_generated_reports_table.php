@@ -24,8 +24,8 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement("ALTER TABLE generated_reports ADD CONSTRAINT chk_reports_format CHECK (format IN ('pdf','xlsx'))");
-        DB::statement("ALTER TABLE generated_reports ADD CONSTRAINT chk_reports_status CHECK (status IN ('pending','processing','ready','failed','expired'))");
+        DB::statement("ALTER TABLE generated_reports ADD CONSTRAINT chk_reports_format CHECK (format IN ('pdf','xlsx','html','csv'))");
+        DB::statement("ALTER TABLE generated_reports ADD CONSTRAINT chk_reports_status CHECK (status IN ('pending','generating','completed','failed','expired'))");
     }
 
     /**

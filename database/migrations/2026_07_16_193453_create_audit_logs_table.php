@@ -20,8 +20,12 @@ return new class extends Migration
             $table->string('action');
             $table->string('actor_type');
             $table->string('actor_identifier')->nullable();
+            $table->string('actor_name')->nullable();
             $table->string('source')->nullable();
+            $table->string('status')->nullable();
+            $table->text('description')->nullable();
             $table->jsonb('payload')->nullable();
+            $table->jsonb('metadata')->nullable();
             // Sin updated_at: se refuerza con trigger en la siguiente migración.
             $table->timestamp('created_at')->useCurrent();
 

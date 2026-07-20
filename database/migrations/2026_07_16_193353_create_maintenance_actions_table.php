@@ -25,7 +25,7 @@ return new class extends Migration
             $table->unsignedInteger('duration_seconds')->nullable();
             $table->text('error')->nullable();
             $table->text('error_message')->nullable();
-            $table->foreignId('initiated_by_contact_id')->nullable()->constrained('contacts')->nullOnDelete();
+            $table->foreignId('initiated_by_contact_id')->nullable()->constrained('authorized_contacts')->nullOnDelete();
             $table->timestamps();
 
             $table->index('server_id');

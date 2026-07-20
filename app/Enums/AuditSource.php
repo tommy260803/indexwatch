@@ -4,8 +4,23 @@ namespace App\Enums;
 
 enum AuditSource: string
 {
-    case Whatsapp = 'whatsapp';
+    case Webhook = 'webhook';
+    case Cli = 'cli';
     case Dashboard = 'dashboard';
+    case Scheduler = 'scheduler';
     case Job = 'job';
-    case System = 'system';
+
+    public static function fromValue(string $value): self
+    {
+        return match ($value) {
+            'webhook' => self::Webhook,
+            'cli' => self::Cli,
+            'dashboard' => self::Dashboard,
+            'scheduler' => self::Scheduler,
+            'job' => self::Job,
+            'whatsapp' => self::Webhook,
+            'system' => self::Cli,
+            default => self::Cli,
+        };
+    }
 }
