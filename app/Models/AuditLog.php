@@ -22,7 +22,10 @@ class AuditLog extends Model
         'action',
         'actor_type',
         'actor_identifier',
+        'actor_name',
         'source',
+        'status',
+        'description',
         'payload',
     ];
 

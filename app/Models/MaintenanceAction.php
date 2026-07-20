@@ -96,10 +96,10 @@ class MaintenanceAction extends Model
     public function scopeReadyToExecute($query)
     {
         return $query->whereIn('status', [MaintenanceStatus::PENDING, MaintenanceStatus::SCHEDULED])
-                     ->where(function($q) {
-                         $q->whereNull('scheduled_for')
-                           ->orWhere('scheduled_for', '<=', now());
-                     });
+            ->where(function ($q) {
+                $q->whereNull('scheduled_for')
+                    ->orWhere('scheduled_for', '<=', now());
+            });
     }
 
     public function scopeByServer($query, Server $server)
@@ -160,14 +160,14 @@ class MaintenanceAction extends Model
 
     public function canBeStarted(): bool
     {
-        return ($this->isPending() || $this->isScheduled()) && 
-               $this->isReady() && 
+        return ($this->isPending() || $this->isScheduled()) &&
+               $this->isReady() &&
                $this->status !== MaintenanceStatus::RUNNING;
     }
 
     public function canBeCancelled(): bool
     {
-        return !$this->isFinished() && 
+        return ! $this->isFinished() &&
                $this->status !== MaintenanceStatus::RUNNING;
     }
 
@@ -191,7 +191,7 @@ class MaintenanceAction extends Model
     public function fail(string $errorMessage): void
     {
         $this->update([
-            'status' => MaintenanceStatus::FAILED,
+            'status' => MaintenanceStatus::Failed,
             'error_message' => $errorMessage,
             'executed_at' => now(),
         ]);
@@ -206,7 +206,7 @@ class MaintenanceAction extends Model
 
     public function getStatusLabel(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             MaintenanceStatus::PENDING => 'Pendiente',
             MaintenanceStatus::SCHEDULED => 'Programada',
             MaintenanceStatus::RUNNING => 'Ejecutando',
@@ -219,7 +219,7 @@ class MaintenanceAction extends Model
 
     public function getActionTypeLabel(): string
     {
-        return match($this->action_type) {
+        return match ($this->action_type) {
             RecommendedAction::REBUILD => 'REBUILD',
             RecommendedAction::REORGANIZE => 'REORGANIZE',
             RecommendedAction::UPDATE_STATISTICS => 'UPDATE STATISTICS',
@@ -235,7 +235,7 @@ class MaintenanceAction extends Model
 
     public function getDurationHuman(): string
     {
-        if (!$this->duration_seconds) {
+        if (! $this->duration_seconds) {
             return 'N/A';
         }
 
@@ -245,9 +245,15 @@ class MaintenanceAction extends Model
         $secs = $seconds % 60;
 
         $parts = [];
-        if ($hours > 0) $parts[] = "{$hours}h";
-        if ($minutes > 0) $parts[] = "{$minutes}m";
-        if ($secs > 0) $parts[] = "{$secs}s";
+        if ($hours > 0) {
+            $parts[] = "{$hours}h";
+        }
+        if ($minutes > 0) {
+            $parts[] = "{$minutes}m";
+        }
+        if ($secs > 0) {
+            $parts[] = "{$secs}s";
+        }
 
         return implode(' ', $parts) ?: '0s';
     }
@@ -268,7 +274,7 @@ class MaintenanceAction extends Model
     public function getActionForAlert(): ?array
     {
         // Método útil para el Integrante 4 al procesar acciones
-        if (!$this->sql_script || $this->isFinished()) {
+        if (! $this->sql_script || $this->isFinished()) {
             return null;
         }
 

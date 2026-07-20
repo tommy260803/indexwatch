@@ -8,7 +8,6 @@ use App\Models\Alert;
 use App\Models\AuditLog;
 use App\Models\Contact;
 use App\Models\MaintenanceAction;
-use App\Models\Server;
 use App\Services\Maintenance\MaintenanceWindowResolver;
 use App\Services\Maintenance\TsqlGeneratorService;
 use App\Services\SqlServer\SqlServerConnectionFactory;
@@ -42,6 +41,7 @@ class ExecuteMaintenanceJob implements ShouldQueue
 
         if (! $alert) {
             Log::warning('ExecuteMaintenanceJob: Alert not found', ['alert_id' => $this->alertId]);
+
             return;
         }
 
@@ -50,34 +50,46 @@ class ExecuteMaintenanceJob implements ShouldQueue
                 'alert_id' => $alert->id,
                 'status' => $alert->status?->value,
             ]);
+
             return;
         }
 
-        // Acquire lock to prevent concurrent execution
+        $existingAction = MaintenanceAction::where('alert_id', $alert->id)
+            ->whereIn('status', [MaintenanceStatus::Running, MaintenanceStatus::Completed])
+            ->exists();
+
+        if ($existingAction) {
+            Log::info('ExecuteMaintenanceJob: Action already running or completed', ['alert_id' => $alert->id]);
+
+            return;
+        }
+
         $lockKey = "maintenance:server:{$alert->server_id}:action:{$alert->id}";
         $lockStore = config('indexwatch.maintenance.lock_store', 'redis');
-        $lock = app('cache')->store($lockStore)->lock($lockKey, 300); // 5 min lock
+        $lock = app('cache')->store($lockStore)->lock($lockKey, 300);
 
         if (! $lock->get()) {
-            Log::warning('ExecuteMaintenanceJob: Could not acquire lock', ['alert_id' => $alert->id, 'attempt' => $this->attempt]);
-            // Prevent infinite re-queuing - max 3 attempts
+            Log::warning('ExecuteMaintenanceJob: Could not acquire lock', [
+                'alert_id' => $alert->id,
+                'attempt' => $this->attempt,
+            ]);
+
             if ($this->attempt >= 3) {
-                Log::warning('ExecuteMaintenanceJob: Max lock acquisition attempts reached, marking as failed', ['alert_id' => $alert->id]);
+                Log::warning('ExecuteMaintenanceJob: Max lock attempts reached', ['alert_id' => $alert->id]);
                 $contact = $alert->approvedBy;
                 $this->fail($alert, 'Max lock acquisition attempts reached', $whatsapp, $contact);
+
                 return;
             }
-            // In sync queue, release() returns null, so we need to re-dispatch with delay
-            if ($this->release()) {
-                $this->release()->delay(now()->addMinutes(5));
-            } else {
-                static::dispatch($this->alertId, $this->attempt + 1)->delay(now()->addMinutes(5));
-            }
+
+            static::dispatch($this->alertId, $this->attempt + 1)
+                ->delay(now()->addMinutes(5));
+
             return;
         }
 
         try {
-            $this->execute($alert, $tsqlGenerator, $windowResolver, $connections, $errors, $whatsapp, $lock);
+            $this->execute($alert, $tsqlGenerator, $windowResolver, $connections, $errors, $whatsapp);
         } finally {
             $lock->release();
         }
@@ -90,68 +102,62 @@ class ExecuteMaintenanceJob implements ShouldQueue
         SqlServerConnectionFactory $connections,
         SqlServerErrorSanitizer $errors,
         WhatsAppService $whatsapp,
-        \Illuminate\Contracts\Cache\Lock $lock,
     ): void {
         $server = $alert->server;
         $contact = $alert->approvedBy;
 
-        // Re-validate preconditions
         if (! $server || ! $server->isActive()) {
             $this->fail($alert, 'Server inactive or not found', $whatsapp, $contact);
+
             return;
         }
 
-        // Check maintenance window if scheduled
         if ($alert->scheduled_for && ! $windowResolver->isWithinWindow($server)) {
-            Log::info('ExecuteMaintenanceJob: Outside maintenance window, re-queueing', ['alert_id' => $alert->id, 'attempt' => $this->attempt]);
-            // Prevent infinite re-queuing - max 3 attempts
+            Log::info('ExecuteMaintenanceJob: Outside maintenance window', [
+                'alert_id' => $alert->id,
+                'attempt' => $this->attempt,
+            ]);
+
             if ($this->attempt >= 3) {
-                Log::warning('ExecuteMaintenanceJob: Max re-queue attempts reached, marking as failed', ['alert_id' => $alert->id]);
+                Log::warning('ExecuteMaintenanceJob: Max re-queue attempts reached', ['alert_id' => $alert->id]);
                 $this->fail($alert, 'Max re-queue attempts reached (outside maintenance window)', $whatsapp, $contact);
+
                 return;
             }
-            // In sync queue, release() returns null, so we need to re-dispatch with delay
-            if ($this->release()) {
-                $this->release()->delay($alert->scheduled_for);
-            } else {
-                static::dispatch($this->alertId, $this->attempt + 1)->delay($alert->scheduled_for);
-            }
+
+            static::dispatch($this->alertId, $this->attempt + 1)
+                ->delay($alert->scheduled_for);
+
             return;
         }
 
         $sql = $tsqlGenerator->generate($alert);
 
-        // Create maintenance action record
         $action = MaintenanceAction::create([
-            'alert_id'           => $alert->id,
-            'server_id'          => $server->id,
-            'action_type'        => $alert->recommended_action,
-            'status'             => MaintenanceStatus::Running,
-            'sql_preview'        => $sql,
-            'scheduled_for'      => $alert->scheduled_for,
-            'started_at'         => now(),
-            'metadata'           => $alert->metadata ?? [],
+            'alert_id' => $alert->id,
+            'server_id' => $server->id,
+            'action_type' => $alert->recommended_action,
+            'status' => MaintenanceStatus::Running,
+            'sql_script' => $sql,
+            'scheduled_for' => $alert->scheduled_for,
+            'started_at' => now(),
         ]);
 
-        // Audit: execution started
         AuditLog::create([
-            'server_id'                 => $server->id,
-            'alert_id'                  => $alert->id,
-            'maintenance_action_id'     => $action->id,
-            'auditable_type'            => MaintenanceAction::class,
-            'auditable_id'              => $action->id,
-            'actor_type'                => 'system',
-            'actor_name'                => 'ExecuteMaintenanceJob',
-            'source'                    => 'job',
-            'action'                    => 'maintenance_execute',
-            'status'                    => 'started',
-            'description'               => 'Started maintenance action: ' . $action->action_type->value,
-            'metadata'                  => ['sql' => $sql],
+            'server_id' => $server->id,
+            'auditable_type' => MaintenanceAction::class,
+            'auditable_id' => $action->id,
+            'actor_type' => 'system',
+            'actor_name' => 'ExecuteMaintenanceJob',
+            'source' => 'job',
+            'action' => 'maintenance_execute',
+            'status' => 'started',
+            'description' => 'Started maintenance action: '.$action->action_type->value,
+            'payload' => ['alert_id' => $alert->id, 'maintenance_action_id' => $action->id, 'sql' => $sql],
         ]);
 
-        // Update alert status
         $alert->forceFill([
-            'status'      => AlertStatus::Running,
+            'status' => AlertStatus::Running,
             'executed_at' => now(),
         ])->save();
 
@@ -159,56 +165,47 @@ class ExecuteMaintenanceJob implements ShouldQueue
             $connection = $connections->connect($server);
             $started = microtime(true);
 
-            // Execute the T-SQL
             $connection->statement($sql);
 
-$durationSeconds = (int) round((microtime(true) - $started));
+            $durationMs = (int) round((microtime(true) - $started) * 1000);
 
-            // Update action with success
             $action->forceFill([
-                'status'       => MaintenanceStatus::Succeeded,
-                'executed_at'  => now(),
-                'duration_seconds'  => $durationSeconds,
-                'result'       => 'Executed successfully',
+                'status' => MaintenanceStatus::Completed,
+                'executed_at' => now(),
+                'duration_seconds' => (int) round($durationMs / 1000),
             ])->save();
 
-            // Update alert
             $alert->forceFill([
-                'status'     => AlertStatus::Succeeded,
-                'executed_at'=> now(),
-                'metadata'   => array_merge($alert->metadata ?? [], [
+                'status' => AlertStatus::Succeeded,
+                'executed_at' => now(),
+                'metadata' => array_merge($alert->metadata ?? [], [
                     'execution_result' => 'success',
-                    'duration_ms'      => $durationMs,
+                    'duration_ms' => $durationMs,
                 ]),
             ])->save();
 
-            // Audit: success
             AuditLog::create([
-                'server_id'                 => $server->id,
-                'alert_id'                  => $alert->id,
-                'maintenance_action_id'     => $action->id,
-                'auditable_type'            => MaintenanceAction::class,
-                'auditable_id'              => $action->id,
-                'actor_type'                => 'system',
-                'actor_name'                => 'ExecuteMaintenanceJob',
-                'source'                    => 'job',
-                'action'                    => 'maintenance_result',
-                'status'                    => 'succeeded',
-                'description'               => 'Maintenance action completed successfully',
-                'metadata'                  => ['duration_ms' => $durationMs],
+                'server_id' => $server->id,
+                'auditable_type' => MaintenanceAction::class,
+                'auditable_id' => $action->id,
+                'actor_type' => 'system',
+                'actor_name' => 'ExecuteMaintenanceJob',
+                'source' => 'job',
+                'action' => 'maintenance_result',
+                'status' => 'succeeded',
+                'description' => 'Maintenance action completed successfully',
+                'payload' => ['alert_id' => $alert->id, 'maintenance_action_id' => $action->id, 'duration_ms' => $durationMs],
             ]);
 
-            // Trigger verification scan after 2 minutes
-            \App\Jobs\ScanServerJob::dispatch($server->id)->delay(now()->addMinutes(2));
+            ScanServerJob::dispatch($server->id)->delay(now()->addMinutes(2));
 
-            // Notify via WhatsApp
             if ($contact) {
-                $whatsapp->sendConfirmation($contact->phone_e164, sprintf(
-                    "✅ *Mantenimiento completado — IndexWatch*\n\n" .
-                    "🔹 Índice: %s\n" .
-                    "🔹 Acción: %s\n" .
-                    "🔹 Duración: %d ms\n" .
-                    "🔹 Hora: %s\n\n" .
+                $whatsapp->sendConfirmation($contact->phone_number, sprintf(
+                    "✅ *Mantenimiento completado — IndexWatch*\n\n".
+                    "🔹 Índice: %s\n".
+                    "🔹 Acción: %s\n".
+                    "🔹 Duración: %d ms\n".
+                    "🔹 Hora: %s\n\n".
                     "📜 Script ejecutado:\n%s",
                     $alert->getSubjectDisplay(),
                     $action->action_type->value,
@@ -226,45 +223,39 @@ $durationSeconds = (int) round((microtime(true) - $started));
 
         } catch (Throwable $e) {
             $safeError = $errors->sanitize($e, $server);
-            $durationSeconds = $action->started_at ? (int) round($action->started_at->diffInSeconds(now())) : 0;
+            $durationMs = $action->started_at ? (int) round($action->started_at->diffInMilliseconds(now())) : 0;
 
-            $action->forceFill([
-                'status'       => MaintenanceStatus::Failed,
-                'executed_at'  => now(),
-                'duration_seconds'  => $durationSeconds,
-                'error'        => $safeError,
-            ])->save();
+            $action->fail($safeError);
+            $action->forceFill(['duration_seconds' => (int) round($durationMs / 1000)])->save();
 
             $alert->forceFill([
-                'status'     => AlertStatus::Failed,
-                'metadata'   => array_merge($alert->metadata ?? [], [
+                'status' => AlertStatus::Failed,
+                'metadata' => array_merge($alert->metadata ?? [], [
                     'execution_result' => 'failed',
-                    'error'            => $safeError,
+                    'error' => $safeError,
                 ]),
             ])->save();
 
             AuditLog::create([
-                'server_id'                 => $server->id,
-                'alert_id'                  => $alert->id,
-                'maintenance_action_id'     => $action->id,
-                'auditable_type'            => MaintenanceAction::class,
-                'auditable_id'              => $action->id,
-                'actor_type'                => 'system',
-                'actor_name'                => 'ExecuteMaintenanceJob',
-                'source'                    => 'job',
-                'action'                    => 'maintenance_result',
-                'status'                    => 'failed',
-                'description'               => 'Maintenance action failed: ' . $safeError,
-                'metadata'                  => ['error' => $safeError],
+                'server_id' => $server->id,
+                'auditable_type' => MaintenanceAction::class,
+                'auditable_id' => $action->id,
+                'actor_type' => 'system',
+                'actor_name' => 'ExecuteMaintenanceJob',
+                'source' => 'job',
+                'action' => 'maintenance_result',
+                'status' => 'failed',
+                'description' => 'Maintenance action failed: '.$safeError,
+                'payload' => ['alert_id' => $alert->id, 'maintenance_action_id' => $action->id, 'error' => $safeError],
             ]);
 
             if ($contact) {
-                $whatsapp->sendConfirmation($contact->phone_e164, sprintf(
-                    "❌ *Mantenimiento falló — IndexWatch*\n\n" .
-                    "🔹 Índice: %s\n" .
-                    "🔹 Acción: %s\n" .
-                    "🔹 Error: %s\n" .
-                    "🔹 Hora: %s",
+                $whatsapp->sendConfirmation($contact->phone_number, sprintf(
+                    "❌ *Mantenimiento falló — IndexWatch*\n\n".
+                    "🔹 Índice: %s\n".
+                    "🔹 Acción: %s\n".
+                    "🔹 Error: %s\n".
+                    '🔹 Hora: %s',
                     $alert->getSubjectDisplay(),
                     $action->action_type->value,
                     $safeError,
@@ -285,29 +276,29 @@ $durationSeconds = (int) round((microtime(true) - $started));
     private function fail(Alert $alert, string $reason, WhatsAppService $whatsapp, ?Contact $contact): void
     {
         $alert->forceFill([
-            'status'     => AlertStatus::Failed,
-            'metadata'   => array_merge($alert->metadata ?? [], ['execution_result' => 'failed', 'error' => $reason]),
+            'status' => AlertStatus::Failed,
+            'metadata' => array_merge($alert->metadata ?? [], ['execution_result' => 'failed', 'error' => $reason]),
         ])->save();
 
         AuditLog::create([
-            'server_id'      => $alert->server_id,
-            'alert_id'       => $alert->id,
+            'server_id' => $alert->server_id,
             'auditable_type' => Alert::class,
-            'auditable_id'   => $alert->id,
-            'actor_type'     => 'system',
-            'actor_name'     => 'ExecuteMaintenanceJob',
-            'source'         => 'job',
-            'action'         => 'maintenance_result',
-            'status'         => 'failed',
-            'description'    => $reason,
+            'auditable_id' => $alert->id,
+            'actor_type' => 'system',
+            'actor_name' => 'ExecuteMaintenanceJob',
+            'source' => 'job',
+            'action' => 'maintenance_result',
+            'status' => 'failed',
+            'description' => $reason,
+            'payload' => ['alert_id' => $alert->id],
         ]);
 
         if ($contact) {
-            $whatsapp->sendConfirmation($contact->phone_e164, sprintf(
-                "❌ *Mantenimiento no ejecutado — IndexWatch*\n\n" .
-                "🔹 Índice: %s\n" .
-                "🔹 Razón: %s\n" .
-                "🔹 Hora: %s",
+            $whatsapp->sendConfirmation($contact->phone_number, sprintf(
+                "❌ *Mantenimiento no ejecutado — IndexWatch*\n\n".
+                "🔹 Índice: %s\n".
+                "🔹 Razón: %s\n".
+                '🔹 Hora: %s',
                 $alert->getSubjectDisplay(),
                 $reason,
                 now()->format('H:i:s')

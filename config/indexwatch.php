@@ -41,5 +41,31 @@ return [
 
     'maintenance' => [
         'lock_store' => env('INDEXWATCH_LOCK_STORE', 'redis'),
+        'lock_ttl_seconds' => (int) env('INDEXWATCH_LOCK_TTL', 300),
+
+        // Política ante contactos no autorizados que intentan aprobar desde WhatsApp.
+        // 'reject' → responde con error; 'silent' → ignora sin respuesta.
+        'unauthorized_policy' => env('INDEXWATCH_UNAUTHORIZED_POLICY', 'reject'),
+
+        // Comportamiento cuando no hay ventanas de mantenimiento configuradas para un servidor.
+        // 'pending' → queda aprobada sin programar (requiere ejecución manual).
+        // 'immediate' → ejecuta inmediatamente si la acción es de riesgo none/medium.
+        'no_window_behavior' => env('INDEXWATCH_NO_WINDOW_BEHAVIOR', 'pending'),
+
+        // Máximo de reintentos de adquisición de lock antes de fallar el Job.
+        'max_lock_attempts' => (int) env('INDEXWATCH_MAX_LOCK_ATTEMPTS', 3),
+
+        // Timeout en segundos para la ejecución de T-SQL en SQL Server.
+        'tsql_timeout_seconds' => (int) env('INDEXWATCH_TSQL_TIMEOUT', 120),
+
+        // Acciones que requieren doble confirmación (el contacto debe aprobar dos veces).
+        // Se evalúa contra RecommendedAction::requiresDoubleConfirmation().
+        'require_double_confirmation' => filter_var(
+            env('INDEXWATCH_REQUIRE_DOUBLE_CONFIRMATION', true),
+            FILTER_VALIDATE_BOOL,
+        ),
+
+        // Idempotencia: horas que un evento de WhatsApp se retiene para evitar reprocesamiento.
+        'webhook_event_ttl_hours' => (int) env('INDEXWATCH_WEBHOOK_EVENT_TTL_HOURS', 72),
     ],
 ];
