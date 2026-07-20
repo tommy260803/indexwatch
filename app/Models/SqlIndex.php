@@ -230,4 +230,9 @@ class SqlIndex extends Model
 
         return $this->qualifiedName().$status.($type ? " ({$type})" : '');
     }
+
+    public function fingerprintUnused(): string
+    {
+        return hash('sha256', "unused:{$this->server_id}:{$this->object_id}:{$this->index_id_native}");
+    }
 }

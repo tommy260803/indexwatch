@@ -2,6 +2,7 @@
 
 namespace App\Services\SqlServer;
 
+use App\Domain\Analytics\DTO\MissingIndexMetric;
 use App\Domain\Monitoring\DTO\IndexMetric;
 use App\Domain\Monitoring\DTO\InspectionResult;
 use App\Domain\Monitoring\DTO\PageSplitMetric;
@@ -143,6 +144,36 @@ class SqlServerInspectorService
         OPTION (MAXDOP 1);
         SQL;
 
+    private const MISSING_INDEXES_QUERY = <<<'SQL'
+        SET NOCOUNT ON;
+
+        SELECT
+            tbl.object_id,
+            sch.name AS schema_name,
+            tbl.name AS table_name,
+            mig.index_group_handle,
+            mid.equality_columns,
+            mid.inequality_columns,
+            mid.included_columns,
+            CONVERT(decimal(19, 2), migs.avg_total_user_cost * migs.avg_user_impact * (migs.user_seeks + migs.user_scans)) AS estimated_impact,
+            migs.user_seeks,
+            migs.user_scans,
+            migs.avg_total_user_cost,
+            migs.avg_user_impact,
+            migs.last_user_seek,
+            migs.last_user_scan
+        FROM sys.dm_db_missing_index_groups AS mig
+        INNER JOIN sys.dm_db_missing_index_group_stats AS migs
+            ON migs.group_handle = mig.index_group_handle
+        INNER JOIN sys.dm_db_missing_index_details AS mid
+            ON mid.index_handle = mig.index_handle
+        INNER JOIN sys.tables AS tbl ON tbl.object_id = mid.object_id
+        INNER JOIN sys.schemas AS sch ON sch.schema_id = tbl.schema_id
+        WHERE tbl.is_ms_shipped = 0
+          AND mid.database_id = DB_ID()
+        ORDER BY estimated_impact DESC;
+        SQL;
+
     public function __construct(private readonly SqlServerCapabilityService $capabilityService) {}
 
     public function inspect(Connection $connection, int $minimumIndexPages): InspectionResult
@@ -165,6 +196,7 @@ class SqlServerInspectorService
         $usage = $this->optionalQuery($connection, 'usage', self::USAGE_QUERY, [], $warnings);
         $statistics = $this->optionalQuery($connection, 'statistics', self::STATISTICS_QUERY, [], $warnings);
         $pageSplits = $this->optionalQuery($connection, 'page_splits', self::PAGE_SPLITS_QUERY, [], $warnings);
+        $missingIndexes = $this->optionalQuery($connection, 'missing_indexes', self::MISSING_INDEXES_QUERY, [], $warnings);
 
         $fragmentationByKey = $this->keyRows($fragmentation);
         $usageByKey = $this->keyRows($usage);
@@ -222,9 +254,35 @@ class SqlServerInspectorService
                 nonleafCount: (int) $row->nonleaf_page_split_count,
                 totalCount: (int) $row->page_split_count,
             ), $pageSplits),
+            missingIndexes: array_map(fn (object $row) => new MissingIndexMetric(
+                schemaName: (string) $row->schema_name,
+                tableName: (string) $row->table_name,
+                objectId: (int) $row->object_id,
+                indexGroupHandle: (int) $row->index_group_handle,
+                equalityColumns: $this->parseColumns($row->equality_columns),
+                inequalityColumns: $this->parseColumns($row->inequality_columns),
+                includedColumns: $this->parseColumns($row->included_columns),
+                estimatedImpact: (float) $row->estimated_impact,
+                userSeeks: (int) $row->user_seeks,
+                userScans: (int) $row->user_scans,
+                avgTotalUserCost: (float) $row->avg_total_user_cost,
+                avgUserImpact: (float) $row->avg_user_impact,
+                lastUserSeekAt: $row->last_user_seek !== null ? (int) $row->last_user_seek : null,
+                lastUserScanAt: $row->last_user_scan !== null ? (int) $row->last_user_scan : null,
+            ), $missingIndexes),
             warnings: $warnings,
             serverStartedAt: $serverStartedAt,
         );
+    }
+
+    /** @return list<string> */
+    private function parseColumns(?string $columns): array
+    {
+        if ($columns === null || $columns === '') {
+            return [];
+        }
+
+        return array_map('trim', explode(',', $columns));
     }
 
     /** @return list<object> */

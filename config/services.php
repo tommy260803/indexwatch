@@ -40,6 +40,7 @@ return [
         'phone_id'     => env('WHATSAPP_PHONE_ID'),
         'to'           => env('WHATSAPP_TO'),
         'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
+        'app_secret'   => env('WHATSAPP_APP_SECRET'),
     ],
 
 ];

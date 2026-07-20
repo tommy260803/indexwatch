@@ -2,6 +2,7 @@
 
 namespace App\Services\Monitoring;
 
+use App\Domain\Analytics\DTO\Finding;
 use App\Domain\Monitoring\DTO\InspectionResult;
 use App\Enums\AlertSeverity;
 use App\Enums\AlertStatus;
@@ -11,6 +12,10 @@ use App\Models\Alert;
 use App\Models\Server;
 use App\Models\SqlIndex;
 use App\Models\StatisticsStatus;
+use App\Services\Analytics\MissingIndexesAnalyzer;
+use App\Services\Analytics\UnusedIndexesAnalyzer;
+use App\Services\Analytics\DuplicateIndexesAnalyzer;
+use App\Services\Analytics\HeapsAnalyzer;
 
 class AlertDetectionService
 {
@@ -19,6 +24,13 @@ class AlertDetectionService
 
     /** @var array<string, true> */
     private array $freshPageSplitKeys = [];
+
+    public function __construct(
+        private readonly MissingIndexesAnalyzer $missingIndexesAnalyzer,
+        private readonly UnusedIndexesAnalyzer $unusedIndexesAnalyzer,
+        private readonly DuplicateIndexesAnalyzer $duplicateIndexesAnalyzer,
+        private readonly HeapsAnalyzer $heapsAnalyzer,
+    ) {}
 
     public function detect(Server $server, InspectionResult $result): int
     {
@@ -34,8 +46,11 @@ class AlertDetectionService
         $usageAvailable = ! isset($result->warnings['usage']);
         $pageSplitsAvailable = ! isset($result->warnings['page_splits']);
         $statisticsAvailable = ! isset($result->warnings['statistics']);
+        $missingIndexesAvailable = ! isset($result->warnings['missing_indexes']);
 
-        foreach ($server->sqlIndexes()->active()->get() as $index) {
+        $activeIndexes = $server->sqlIndexes()->active()->get();
+
+        foreach ($activeIndexes as $index) {
             if ($fragmentationAvailable) {
                 $count += $this->detectFragmentation($server, $index);
             }
@@ -73,6 +88,34 @@ class AlertDetectionService
             }
         }
 
+        if ($missingIndexesAvailable) {
+            $missingIndexFindings = $this->missingIndexesAnalyzer->analyze($server, collect($result->missingIndexes));
+            foreach ($missingIndexFindings as $finding) {
+                $count += $this->storeFindingFromFinding($server, $finding);
+            }
+        }
+
+        if ($usageAvailable) {
+            $unusedFindings = $this->unusedIndexesAnalyzer->analyze($server, $activeIndexes);
+            foreach ($unusedFindings as $finding) {
+                $count += $this->storeFindingFromFinding($server, $finding);
+            }
+        }
+
+        if ($usageAvailable) {
+            $duplicateFindings = $this->duplicateIndexesAnalyzer->analyze($server, $activeIndexes);
+            foreach ($duplicateFindings as $finding) {
+                $count += $this->storeFindingFromFinding($server, $finding);
+            }
+        }
+
+        if ($usageAvailable) {
+            $heapFindings = $this->heapsAnalyzer->analyze($server, $activeIndexes);
+            foreach ($heapFindings as $finding) {
+                $count += $this->storeFindingFromFinding($server, $finding);
+            }
+        }
+
         $completeInventory = $result->capabilities->hasViewDefinition === true;
         $availableTypes = array_values(array_filter([
             $fragmentationAvailable && $completeInventory ? AlertType::Fragmentation : null,
@@ -82,6 +125,10 @@ class AlertDetectionService
                 && $result->capabilities->hasDatabaseSelect === true
                     ? AlertType::StaleStatistics
                     : null,
+            $missingIndexesAvailable && $completeInventory ? AlertType::MissingIndex : null,
+            $usageAvailable && $completeInventory ? AlertType::Inactive : null,
+            $usageAvailable && $completeInventory ? AlertType::DuplicateIndex : null,
+            $usageAvailable && $completeInventory ? AlertType::Heap : null,
         ]));
         $this->dismissRecoveredFindings($server, $availableTypes);
 
@@ -223,6 +270,43 @@ class AlertDetectionService
             'fragmentation_percent' => $fragmentation,
             'metadata' => $metadata,
         ])->save();
+
+        return $created ? 1 : 0;
+    }
+
+    private function storeFindingFromFinding(Server $server, Finding $finding): int
+    {
+        $this->seenFingerprints[] = $finding->fingerprint;
+        $openStatuses = array_map(
+            fn (AlertStatus $status) => $status->value,
+            AlertStatus::openStatuses(),
+        );
+        $alert = Alert::query()
+            ->where('server_id', $server->id)
+            ->where('fingerprint', $finding->fingerprint)
+            ->whereIn('status', $openStatuses)
+            ->first();
+
+        if ($alert !== null && in_array($alert->status, [
+            AlertStatus::Approved,
+            AlertStatus::Scheduled,
+            AlertStatus::Running,
+        ], true)) {
+            return 0;
+        }
+
+        $created = $alert === null;
+        $alert ??= new Alert;
+        $alert->forceFill(array_merge(
+            $finding->toAlertData(),
+            [
+                'server_id' => $server->id,
+                'sql_index_id' => $finding->sqlIndexId,
+                'subject_type' => $finding->subjectType,
+                'subject_id' => $finding->subjectId,
+                'status' => $alert->exists ? $alert->status : AlertStatus::Pending,
+            ]
+        ))->save();
 
         return $created ? 1 : 0;
     }

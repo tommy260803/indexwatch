@@ -18,7 +18,7 @@ class SqlServerInspectorServiceTest extends TestCase
         $connection = Mockery::mock(Connection::class);
         $capabilityService = Mockery::mock(SqlServerCapabilityService::class);
         $capabilityService->expects('inspect')->with($connection)->andReturn($this->capabilities());
-        $connection->expects('select')->times(5)->andReturnUsing(function (string $query): array {
+        $connection->expects('select')->times(6)->andReturnUsing(function (string $query): array {
             return match (true) {
                 str_contains($query, 'idx.type_desc AS index_type') => [(object) [
                     'schema_name' => 'dbo', 'table_name' => 'orders', 'object_id' => 10,
@@ -37,6 +37,7 @@ class SqlServerInspectorServiceTest extends TestCase
                 ]],
                 str_contains($query, 'sys.dm_db_stats_properties') => [],
                 str_contains($query, 'sys.dm_db_index_operational_stats') => [],
+                str_contains($query, 'sys.dm_db_missing_index_groups') => [],
                 default => $this->fail('Unexpected SQL query.'),
             };
         });

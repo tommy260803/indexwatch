@@ -11,6 +11,15 @@ use Tests\TestCase;
 
 class SqlServerConnectionFactoryTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (! extension_loaded('pdo_sqlsrv')) {
+            $this->markTestSkipped('pdo_sqlsrv extension not available');
+        }
+    }
+
     public function test_it_builds_an_isolated_read_only_connection_without_db_url(): void
     {
         $database = Mockery::mock(DatabaseManager::class);

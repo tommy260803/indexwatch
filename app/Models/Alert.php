@@ -35,7 +35,6 @@ class Alert extends Model
         'approved_at',
         'scheduled_for',
         'executed_at',
-        'resolved_at',  // ❌ ELIMINADO - no existe en migración
     ];
 
     protected $casts = [
@@ -49,7 +48,6 @@ class Alert extends Model
         'approved_at' => 'datetime',
         'scheduled_for' => 'datetime',
         'executed_at' => 'datetime',
-        'resolved_at' => 'datetime',  // ❌ ELIMINADO
     ];
 
     // ============ FACTORY METHODS ============

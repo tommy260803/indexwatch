@@ -1,7 +1,9 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\WhatsApp;
 
+use App\Enums\AlertType;
+use App\Models\Alert;
 use Illuminate\Support\Facades\Http;
 
 class WhatsAppService
@@ -17,28 +19,50 @@ class WhatsAppService
         $this->baseUrl = "https://graph.facebook.com/v19.0/{$this->phoneId}/messages";
     }
 
-    public function sendAlertWithButtons(string $to, array $data): array
+    public function sendAlertWithButtons(string $to, Alert $alert): array
     {
-        $response = Http::withToken($this->token)
-            ->withoutVerifying()
-            ->post($this->baseUrl, [
-            'messaging_product' => 'whatsapp',
-            'to'                => $to,
-            'type'              => 'interactive',
-            'interactive'       => [
-                'type' => 'button',
-                'body' => [
-                    'text' => $this->buildAlertMessage($data),
+        $actions = ActionCatalog::getAllowedActions($alert->alert_type);
+
+        // Limit to max 3 buttons (WhatsApp limit)
+        $buttons = array_slice($actions, 0, 3, true);
+
+        $interactiveButtons = [];
+        foreach ($buttons as $key => $title) {
+            $interactiveButtons[] = [
+                'type' => 'reply',
+                'reply' => [
+                    'id'    => ActionCatalog::makeButtonId($key, $alert->id),
+                    'title' => $title,
                 ],
-                'action' => [
-                    'buttons' => [
-                        ['type' => 'reply', 'reply' => ['id' => "rebuild_{$data['alert_id']}",    'title' => 'REBUILD']],
-                        ['type' => 'reply', 'reply' => ['id' => "reorganize_{$data['alert_id']}", 'title' => 'REORGANIZE']],
-                        ['type' => 'reply', 'reply' => ['id' => "drop_{$data['alert_id']}",       'title' => 'DROP INDEX']],
+            ];
+        }
+
+        // Add a "Dismiss" option if there's room
+        if (count($interactiveButtons) < 3) {
+            $interactiveButtons[] = [
+                'type' => 'reply',
+                'reply' => [
+                    'id'    => "dismiss_{$alert->id}",
+                    'title' => 'DESCARTAR',
+                ],
+            ];
+        }
+
+        $response = Http::withToken($this->token)
+            ->post($this->baseUrl, [
+                'messaging_product' => 'whatsapp',
+                'to'                => $to,
+                'type'              => 'interactive',
+                'interactive'       => [
+                    'type' => 'button',
+                    'body' => [
+                        'text' => $this->buildAlertMessage($alert),
+                    ],
+                    'action' => [
+                        'buttons' => $interactiveButtons,
                     ],
                 ],
-            ],
-        ]);
+            ]);
 
         return $response->json();
     }
@@ -46,22 +70,27 @@ class WhatsAppService
     public function sendConfirmation(string $to, string $message): void
     {
         Http::withToken($this->token)
-            ->withoutVerifying()
             ->post($this->baseUrl, [
-            'messaging_product' => 'whatsapp',
-            'to'                => $to,
-            'type'              => 'text',
-            'text'              => ['body' => $message],
-        ]);
+                'messaging_product' => 'whatsapp',
+                'to'                => $to,
+                'type'              => 'text',
+                'text'              => ['body' => $message],
+            ]);
     }
 
-    private function buildAlertMessage(array $data): string
+    private function buildAlertMessage(Alert $alert): string
     {
+        $subject = $alert->getSubjectDisplay();
+        $action = $alert->recommended_action?->value ?? 'REVIEW';
+        $frag   = $alert->fragmentation_percent ? " ({$alert->fragmentation_percent}%)" : '';
+        $size   = $alert->metadata['size_mb'] ?? $alert->sqlIndex?->size_mb ?? 'N/A';
+
         return "🚨 *ALERTA INDEXWATCH*\n\n"
-            . "📋 *Índice:* {$data['index_name']}\n"
-            . "📁 *Tabla:* {$data['table_name']}\n"
-            . "⚠️ *Problema:* {$data['problem']}\n"
-            . "💾 *Tamaño:* {$data['size_mb']} MB\n\n"
+            . "📋 *Recurso:* {$subject}\n"
+            . "⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
+            . "📊 *Severidad:* {$alert->getSeverityLabel()}{$frag}\n"
+            . "💾 *Tamaño:* {$size} MB\n"
+            . "🎯 *Acción recomendada:* {$action}\n\n"
             . "¿Qué desea hacer?";
     }
 }
