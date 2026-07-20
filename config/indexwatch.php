@@ -38,4 +38,8 @@ return [
         'expiration_days' => 7,
         'max_audit_logs' => 500,
     ],
+
+    'maintenance' => [
+        'lock_store' => env('INDEXWATCH_LOCK_STORE', 'redis'),
+    ],
 ];

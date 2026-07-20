@@ -13,7 +13,7 @@ use App\Services\Maintenance\MaintenanceWindowResolver;
 use App\Services\Maintenance\TsqlGeneratorService;
 use App\Services\SqlServer\SqlServerConnectionFactory;
 use App\Services\SqlServer\SqlServerErrorSanitizer;
-use App\Services\WhatsAppService;
+use App\Services\WhatsApp\WhatsAppService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -28,6 +28,7 @@ class ExecuteMaintenanceJob implements ShouldQueue
 
     public function __construct(
         public readonly int $alertId,
+        public readonly int $attempt = 0,
     ) {}
 
     public function handle(
@@ -54,11 +55,24 @@ class ExecuteMaintenanceJob implements ShouldQueue
 
         // Acquire lock to prevent concurrent execution
         $lockKey = "maintenance:server:{$alert->server_id}:action:{$alert->id}";
-        $lock = app('cache')->store('redis')->lock($lockKey, 300); // 5 min lock
+        $lockStore = config('indexwatch.maintenance.lock_store', 'redis');
+        $lock = app('cache')->store($lockStore)->lock($lockKey, 300); // 5 min lock
 
         if (! $lock->get()) {
-            Log::warning('ExecuteMaintenanceJob: Could not acquire lock', ['alert_id' => $alert->id]);
-            $this->release()->delay(now()->addMinutes(5));
+            Log::warning('ExecuteMaintenanceJob: Could not acquire lock', ['alert_id' => $alert->id, 'attempt' => $this->attempt]);
+            // Prevent infinite re-queuing - max 3 attempts
+            if ($this->attempt >= 3) {
+                Log::warning('ExecuteMaintenanceJob: Max lock acquisition attempts reached, marking as failed', ['alert_id' => $alert->id]);
+                $contact = $alert->approvedBy;
+                $this->fail($alert, 'Max lock acquisition attempts reached', $whatsapp, $contact);
+                return;
+            }
+            // In sync queue, release() returns null, so we need to re-dispatch with delay
+            if ($this->release()) {
+                $this->release()->delay(now()->addMinutes(5));
+            } else {
+                static::dispatch($this->alertId, $this->attempt + 1)->delay(now()->addMinutes(5));
+            }
             return;
         }
 
@@ -88,9 +102,20 @@ class ExecuteMaintenanceJob implements ShouldQueue
         }
 
         // Check maintenance window if scheduled
-        if ($alert->scheduled_for && ! $windowResolver->isInWindow($server)) {
-            Log::info('ExecuteMaintenanceJob: Outside maintenance window, re-queueing', ['alert_id' => $alert->id]);
-            $this->release()->delay($alert->scheduled_for);
+        if ($alert->scheduled_for && ! $windowResolver->isWithinWindow($server)) {
+            Log::info('ExecuteMaintenanceJob: Outside maintenance window, re-queueing', ['alert_id' => $alert->id, 'attempt' => $this->attempt]);
+            // Prevent infinite re-queuing - max 3 attempts
+            if ($this->attempt >= 3) {
+                Log::warning('ExecuteMaintenanceJob: Max re-queue attempts reached, marking as failed', ['alert_id' => $alert->id]);
+                $this->fail($alert, 'Max re-queue attempts reached (outside maintenance window)', $whatsapp, $contact);
+                return;
+            }
+            // In sync queue, release() returns null, so we need to re-dispatch with delay
+            if ($this->release()) {
+                $this->release()->delay($alert->scheduled_for);
+            } else {
+                static::dispatch($this->alertId, $this->attempt + 1)->delay($alert->scheduled_for);
+            }
             return;
         }
 
@@ -113,6 +138,8 @@ class ExecuteMaintenanceJob implements ShouldQueue
             'server_id'                 => $server->id,
             'alert_id'                  => $alert->id,
             'maintenance_action_id'     => $action->id,
+            'auditable_type'            => MaintenanceAction::class,
+            'auditable_id'              => $action->id,
             'actor_type'                => 'system',
             'actor_name'                => 'ExecuteMaintenanceJob',
             'source'                    => 'job',
@@ -160,6 +187,8 @@ class ExecuteMaintenanceJob implements ShouldQueue
                 'server_id'                 => $server->id,
                 'alert_id'                  => $alert->id,
                 'maintenance_action_id'     => $action->id,
+                'auditable_type'            => MaintenanceAction::class,
+                'auditable_id'              => $action->id,
                 'actor_type'                => 'system',
                 'actor_name'                => 'ExecuteMaintenanceJob',
                 'source'                    => 'job',

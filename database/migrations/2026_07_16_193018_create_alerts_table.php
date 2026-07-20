@@ -26,9 +26,9 @@ return new class extends Migration
             $table->decimal('fragmentation_percent', 5, 2)->nullable();
             $table->jsonb('metadata')->nullable();
             $table->string('whatsapp_message_id')->nullable();
-            $table->foreignId('responded_by_contact_id')->nullable()->constrained('contacts')->nullOnDelete();
+            $table->foreignId('responded_by_contact_id')->nullable()->constrained('authorized_contacts')->nullOnDelete();
             $table->string('responded_action')->nullable();
-            $table->foreignId('approved_by_contact_id')->nullable()->constrained('contacts')->nullOnDelete();
+            $table->foreignId('approved_by_contact_id')->nullable()->constrained('authorized_contacts')->nullOnDelete();
             $table->timestamp('approved_at')->nullable();
             $table->timestamp('scheduled_for')->nullable();
             $table->timestamp('executed_at')->nullable();

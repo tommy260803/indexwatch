@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Alert;
-use App\Models\Contact;
-use App\Services\WhatsAppService;
+use App\Models\AuthorizedContact;
+use App\Models\WhatsAppWebhookEvent;
+use App\Services\WhatsApp\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -91,7 +92,7 @@ class WhatsAppWebhookController extends Controller
         $type      = data_get($message, 'type');
 
         // Idempotency: check if we already processed this message ID
-        $existingEvent = \App\Models\WhatsAppWebhookEvent::where('message_id', $messageId)->first();
+        $existingEvent = WhatsAppWebhookEvent::where('message_id', $messageId)->first();
         if ($existingEvent) {
             return response()->json(['status' => 'duplicate', 'message_id' => $messageId]);
         }
@@ -100,7 +101,7 @@ class WhatsAppWebhookController extends Controller
         if ($type === 'interactive') {
             $buttonReply = data_get($message, 'interactive.button_reply');
             if ($buttonReply) {
-                return $this->handleButtonReply($buttonReply, $from, $messageId, $whatsapp);
+                return $this->handleButtonReply($buttonReply, $from, $messageId, $whatsapp, $changes);
             }
         }
 
@@ -114,7 +115,7 @@ class WhatsAppWebhookController extends Controller
         return response()->json(['status' => 'ignored', 'reason' => 'unsupported message type']);
     }
 
-    private function handleButtonReply(array $buttonReply, string $from, string $messageId, WhatsAppService $whatsapp): \Illuminate\Http\JsonResponse
+private function handleButtonReply(array $buttonReply, string $from, string $messageId, WhatsAppService $whatsapp, array $payload): \Illuminate\Http\JsonResponse
     {
         $buttonId = data_get($buttonReply, 'id');
         $title    = data_get($buttonReply, 'title');
@@ -137,9 +138,12 @@ class WhatsAppWebhookController extends Controller
             return response()->json(['status' => 'error', 'reason' => 'alert not found']);
         }
 
-        // Validate contact is authorized
-        $contact = Contact::where('phone_e164', $from)->where('active', true)->first();
-        if (! $contact) {
+        // Validate contact is authorized (use AuthorizedContact model)
+        $contact = AuthorizedContact::where('phone_e164', $from)
+            ->where('active', true)
+            ->first();
+
+        if (! $contact || ! $contact->isActive()) {
             Log::warning('WhatsApp: unauthorized contact attempted action', ['from' => $from, 'action' => $action]);
             return response()->json(['status' => 'unauthorized']);
         }
@@ -155,14 +159,44 @@ class WhatsAppWebhookController extends Controller
             return response()->json(['status' => 'error', 'reason' => 'action not allowed for this alert type']);
         }
 
+        // Handle DISMISS action specially
+        if ($action === 'dismiss') {
+            $alert->forceFill([
+                'status' => \App\Enums\AlertStatus::Dismissed,
+                'responded_by_contact_id' => $contact->id,
+                'responded_action' => \App\Enums\RecommendedAction::Ignore,
+            ])->save();
+
+            // Record webhook event
+            WhatsAppWebhookEvent::create([
+                'message_id' => $messageId,
+                'from'       => $from,
+                'action'     => $action,
+                'alert_id'   => $alert->id,
+                'contact_id' => $contact->id,
+                'payload'    => $payload,
+            ]);
+
+            $whatsapp->sendConfirmation($from, sprintf(
+                "🗑️ *Alerta descartada — IndexWatch*\n\n" .
+                "🔹 Índice: %s\n" .
+                "🔹 Acción: DESCARTAR\n" .
+                "🔹 Hora: %s",
+                $alert->getSubjectDisplay(),
+                now()->format('H:i:s')
+            ));
+
+            return response()->json(['status' => 'ok']);
+        }
+
         // Record the webhook event for idempotency
-        \App\Models\WhatsAppWebhookEvent::create([
+        WhatsAppWebhookEvent::create([
             'message_id' => $messageId,
             'from'       => $from,
             'action'     => $action,
             'alert_id'   => $alert->id,
             'contact_id' => $contact->id,
-            'payload'    => $changes,
+            'payload'    => $payload,
         ]);
 
         // Approve the alert and schedule for maintenance window
@@ -196,7 +230,7 @@ class WhatsAppWebhookController extends Controller
                 $alert->server->timezone
             ));
         } else {
-            // No maintenance window configured - schedule immediately (or keep as approved pending manual trigger)
+            // No maintenance window configured - keep as approved pending manual trigger
             $alert->forceFill([
                 'status' => \App\Enums\AlertStatus::Approved,
             ])->save();
@@ -225,15 +259,15 @@ class WhatsAppWebhookController extends Controller
         $riskLevel = $alert->recommended_action?->riskLevel() ?? 'none';
 
         return match ($alert->alert_type?->value) {
-            'fragmentation' => ['rebuild', 'reorganize'],
-            'fill_factor' => ['rebuild', 'reorganize'],
-            'page_splits' => ['rebuild', 'reorganize'],
-            'stale_statistics' => ['stats'],
-            'missing_index' => ['review', 'create_index'],
-            'inactive' => ['review', 'disable_index', 'drop_index'],
-            'duplicate_index' => ['review', 'drop_index'],
-            'heap' => ['review', 'create_clustered'],
-            default => ['review'],
+            'fragmentation' => ['rebuild', 'reorganize', 'review', 'dismiss'],
+            'fill_factor' => ['rebuild', 'reorganize', 'review', 'dismiss'],
+            'page_splits' => ['rebuild', 'reorganize', 'review', 'dismiss'],
+            'stale_statistics' => ['stats', 'review', 'dismiss'],
+            'missing_index' => ['review', 'create_index', 'dismiss'],
+            'inactive' => ['review', 'disable_index', 'drop_index', 'dismiss'],
+            'duplicate_index' => ['review', 'drop_index', 'dismiss'],
+            'heap' => ['review', 'create_clustered', 'dismiss'],
+            default => ['review', 'dismiss'],
         };
     }
 }

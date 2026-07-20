@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('from'); // WhatsApp phone number (E.164)
             $table->string('action'); // action taken (rebuild, reorganize, etc.)
             $table->foreignId('alert_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('contact_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('contact_id')->nullable()->constrained('authorized_contacts')->nullOnDelete();
             $table->jsonb('payload')->nullable(); // full webhook payload for debugging
             $table->timestamps();
 
