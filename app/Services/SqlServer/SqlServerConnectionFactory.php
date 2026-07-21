@@ -30,6 +30,17 @@ class SqlServerConnectionFactory
             $pdoOptions[constant('PDO::SQLSRV_ATTR_QUERY_TIMEOUT')] = $timeout;
         }
 
+        $encrypt = $options['encrypt'] ?? config('indexwatch.sql_server.encrypt', null);
+        $trustServerCertificate = $options['trust_server_certificate'] ?? config('indexwatch.sql_server.trust_server_certificate', null);
+
+        if ($encrypt === null) {
+            $encrypt = app()->environment(['local', 'testing']) ? true : true;
+        }
+
+        if ($trustServerCertificate === null) {
+            $trustServerCertificate = app()->environment(['local', 'testing']);
+        }
+
         config()->set("database.connections.{$name}", [
             'driver' => 'sqlsrv',
             'url' => null,
@@ -42,8 +53,8 @@ class SqlServerConnectionFactory
             'prefix' => '',
             'prefix_indexes' => true,
             'readonly' => true,
-            'encrypt' => $this->yesNo($options['encrypt'] ?? true),
-            'trust_server_certificate' => $this->yesNo($options['trust_server_certificate'] ?? false),
+            'encrypt' => $this->yesNo($encrypt),
+            'trust_server_certificate' => $this->yesNo($trustServerCertificate),
             'login_timeout' => $timeout,
             'appname' => 'IndexWatch Scanner',
             'pooling' => false,

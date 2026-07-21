@@ -2,7 +2,7 @@
 Run this file in SSMS with Query > SQLCMD Mode enabled.
 Replace the value below locally. Never commit a real password.
 */
-:setvar INDEXWATCH_SCANNER_PASSWORD "CHANGE_ME_WITH_A_STRONG_LOCAL_PASSWORD"
+:setvar INDEXWATCH_SCANNER_PASSWORD password123
 
 USE [master];
 GO

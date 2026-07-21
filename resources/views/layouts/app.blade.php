@@ -8,92 +8,26 @@
 @stack('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<style>
-    .user-profile-section {
-        margin-top: auto;
-        padding: 16px;
-        border-top: 1px solid rgba(255,255,255,0.1);
-    }
-    .user-profile-btn {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        width: 100%;
-        padding: 12px;
-        background: transparent;
-        border: none;
-        color: #E4E8EE;
-        text-align: left;
-        cursor: pointer;
-        border-radius: 10px;
-        transition: background 0.2s;
-    }
-    .user-profile-btn:hover {
-        background: rgba(255,255,255,0.08);
-    }
-    .user-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #3b82f6, #6366f1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        color: white;
-    }
-    .user-info .user-name {
-        font-weight: 500;
-        font-size: 14px;
-    }
-    .user-info .user-email {
-        font-size: 12px;
-        color: #8A93A3;
-    }
-    .user-dropdown {
-        display: none;
-        position: absolute;
-        bottom: 100%;
-        left: 16px;
-        right: 16px;
-        margin-bottom: 8px;
-        background: #1F2733;
-        border: 1px solid #2A3547;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        z-index: 100;
-    }
-    .user-dropdown a, .user-dropdown button {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        width: 100%;
-        padding: 12px 16px;
-        background: transparent;
-        border: none;
-        color: #E4E8EE;
-        text-decoration: none;
-        text-align: left;
-        cursor: pointer;
-        font-size: 14px;
-        transition: background 0.2s;
-    }
-    .user-dropdown a:hover, .user-dropdown button:hover {
-        background: rgba(255,255,255,0.08);
-    }
-    .user-dropdown .divider {
-        height: 1px;
-        background: #2A3547;
-        margin: 4px 0;
-    }
-</style>
+<script>
+    (function() {
+        const theme = localStorage.getItem('indexwatch-theme') || 'dark';
+        const root = document.documentElement;
+        if (theme === 'light') {
+            root.classList.add('light-mode');
+            root.classList.remove('dark');
+        } else {
+            root.classList.add('dark');
+            root.classList.remove('light-mode');
+        }
+    })();
+</script>
 </head>
 <body>
 
 <div class="shell">
 
   <!-- ===================== SIDEBAR ===================== -->
-  <aside class="sidebar" style="display:flex;flex-direction:column;">
+  <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark">
         <svg viewBox="0 0 24 24" fill="none"><path d="M3 12c0-1 .5-2 1.5-2s1.5 2 2.5 2 1.5-4 2.5-4 1.5 6 2.5 6 1.5-5 2.5-5 1.5 3 2.5 3 1.5-1 2.5-1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -129,13 +63,13 @@
       Configuración y alertas
     </a>
 
-    <div class="sidebar-foot" style="gap: 12px;">
+    <div class="sidebar-foot">
       <!-- Theme toggle button -->
-      <button id="theme-toggle" style="width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 7px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); cursor: pointer; font-size: 13px; font-weight: 550;">
-        <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width: 16px; height: 16px;">
+      <button id="theme-toggle" class="theme-toggle">
+        <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
         </svg>
-        <svg id="theme-icon-light" style="display: none; width: 16px; height: 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <svg id="theme-icon-light" class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <circle cx="12" cy="12" r="5"/>
           <line x1="12" y1="1" x2="12" y2="3"/>
           <line x1="12" y1="21" x2="12" y2="23"/>
@@ -152,7 +86,7 @@
       <div>Último barrido: hace 4 min</div>
     </div>
     <!-- User Profile Section -->
-    <div class="user-profile-section" style="position:relative;">
+    <div class="user-profile-section">
         <div class="user-dropdown" id="userDropdown">
             <a href="{{ route('profile.edit') }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="7" r="4"/><path d="M5 21h14a2 2 0 002-2v-5a2 2 0 00-2-2H5a2 2 0 00-2 2v5a2 2 0 002 2z"/></svg>
@@ -173,7 +107,7 @@
                 <div class="user-name">{{ auth()->user()->name }}</div>
                 <div class="user-email">{{ auth()->user()->email }}</div>
             </div>
-            <svg style="margin-left:auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M6 9l6 6 6-6"/></svg>
+            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M6 9l6 6 6-6"/></svg>
         </button>
     </div>
   </aside> 
@@ -221,11 +155,13 @@
         function applyTheme(theme) {
             if (theme === 'light') {
                 root.classList.add('light-mode');
+                root.classList.remove('dark');
                 iconDark.style.display = 'none';
                 iconLight.style.display = 'block';
                 label.textContent = 'Modo claro';
             } else {
                 root.classList.remove('light-mode');
+                root.classList.add('dark');
                 iconDark.style.display = 'block';
                 iconLight.style.display = 'none';
                 label.textContent = 'Modo oscuro';

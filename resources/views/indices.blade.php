@@ -87,26 +87,26 @@
           <div class="drawer-section-title">Historial de fragmentación</div>
           <div class="chart-box">
             <svg viewBox="0 0 420 140" width="100%" height="140">
-              <line x1="0" y1="35" x2="420" y2="35" stroke="#1F2733" stroke-width="1"/>
-              <line x1="0" y1="70" x2="420" y2="70" stroke="#1F2733" stroke-width="1"/>
-              <line x1="0" y1="105" x2="420" y2="105" stroke="#1F2733" stroke-width="1"/>
-              <text x="4" y="31" font-family="JetBrains Mono" font-size="9" fill="#5A6374">40%</text>
-              <text x="4" y="66" font-family="JetBrains Mono" font-size="9" fill="#5A6374">20%</text>
-              <text x="4" y="101" font-family="JetBrains Mono" font-size="9" fill="#5A6374">0%</text>
+              <line x1="0" y1="35" x2="420" y2="35" stroke="var(--border)" stroke-width="1"/>
+              <line x1="0" y1="70" x2="420" y2="70" stroke="var(--border)" stroke-width="1"/>
+              <line x1="0" y1="105" x2="420" y2="105" stroke="var(--border)" stroke-width="1"/>
+              <text x="4" y="31" font-family="JetBrains Mono" font-size="9" fill="var(--text-faint)">40%</text>
+              <text x="4" y="66" font-family="JetBrains Mono" font-size="9" fill="var(--text-faint)">20%</text>
+              <text x="4" y="101" font-family="JetBrains Mono" font-size="9" fill="var(--text-faint)">0%</text>
               <polyline points="30,118 90,112 150,98 210,88 270,62 330,44 390,20"
-                fill="none" stroke="#E8543E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <g fill="#E8543E">
+                fill="none" stroke="var(--crit)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <g fill="var(--crit)">
                 <circle cx="30" cy="118" r="3"/><circle cx="90" cy="112" r="3"/><circle cx="150" cy="98" r="3"/>
                 <circle cx="210" cy="88" r="3"/><circle cx="270" cy="62" r="3"/><circle cx="330" cy="44" r="3"/>
                 <circle cx="390" cy="20" r="3.5"/>
               </g>
-              <text x="30" y="135" font-family="Inter" font-size="9" fill="#5A6374" text-anchor="middle">Ene</text>
-              <text x="90" y="135" font-family="Inter" font-size="9" fill="#5A6374" text-anchor="middle">Feb</text>
-              <text x="150" y="135" font-family="Inter" font-size="9" fill="#5A6374" text-anchor="middle">Mar</text>
-              <text x="210" y="135" font-family="Inter" font-size="9" fill="#5A6374" text-anchor="middle">Abr</text>
-              <text x="270" y="135" font-family="Inter" font-size="9" fill="#5A6374" text-anchor="middle">May</text>
-              <text x="330" y="135" font-family="Inter" font-size="9" fill="#5A6374" text-anchor="middle">Jun</text>
-              <text x="390" y="135" font-family="Inter" font-size="9" fill="#5A6374" text-anchor="middle">Hoy</text>
+              <text x="30" y="135" font-family="Inter" font-size="9" fill="var(--text-faint)" text-anchor="middle">Ene</text>
+              <text x="90" y="135" font-family="Inter" font-size="9" fill="var(--text-faint)" text-anchor="middle">Feb</text>
+              <text x="150" y="135" font-family="Inter" font-size="9" fill="var(--text-faint)" text-anchor="middle">Mar</text>
+              <text x="210" y="135" font-family="Inter" font-size="9" fill="var(--text-faint)" text-anchor="middle">Abr</text>
+              <text x="270" y="135" font-family="Inter" font-size="9" fill="var(--text-faint)" text-anchor="middle">May</text>
+              <text x="330" y="135" font-family="Inter" font-size="9" fill="var(--text-faint)" text-anchor="middle">Jun</text>
+              <text x="390" y="135" font-family="Inter" font-size="9" fill="var(--text-faint)" text-anchor="middle">Hoy</text>
             </svg>
           </div>
         </div>

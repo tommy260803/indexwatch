@@ -3,11 +3,11 @@
     <!-- PAGE 1 — DASHBOARD                                            -->
     <!-- ============================================================ -->
     <section class="page active">
-      <div class="page-head">
-        <div>
+      <div class="hero-panel">
+        <div class="hero-copy">
           <div class="page-eyebrow">Resumen ejecutivo</div>
           <div class="page-title">Panel de control</div>
-          <div class="page-sub">Estado de fragmentación de índices en todas las bases monitoreadas</div>
+          <div class="page-sub">Monitorea la salud de tus índices, prioriza acciones y mantén la infraestructura SQL Server bajo control.</div>
         </div>
         <a class="btn btn-primary" href="{{ route('indices') }}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-4.3-4.3M19 11a8 8 0 11-16 0 8 8 0 0116 0z"/></svg>
@@ -64,8 +64,8 @@
                 stroke-dasharray="72.7 292.3" stroke-dashoffset="-219.8" transform="rotate(-90 75 75)" stroke-linecap="round"/>
               <circle cx="75" cy="75" r="58" fill="none" stroke="var(--crit)" stroke-width="18"
                 stroke-dasharray="27.5 337.5" stroke-dashoffset="-292.5" transform="rotate(-90 75 75)" stroke-linecap="round"/>
-              <text id="donut-total" x="75" y="71" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="26" font-weight="700" fill="#E4E8EE">186</text>
-              <text x="75" y="88" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#8A93A3">índices</text>
+              <text id="donut-total" x="75" y="71" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="26" font-weight="700" fill="var(--text)">186</text>
+              <text x="75" y="88" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="var(--text-dim)">índices</text>
             </svg>
             <div class="donut-legend">
               <div class="legend-row"><span class="legend-dot" style="background:var(--ok)"></span><span class="lbl">Saludable</span><span class="val" id="legend-ok">135</span></div>
