@@ -26,6 +26,10 @@
   --accent: #5B8DEF;
   --accent-bg: rgba(91, 141, 239, 0.12);
   --accent-soft: rgba(91, 141, 239, 0.4);
+  --accent-dark: #4A7ADF;
+
+  --syntax: var(--syntax);
+  --syntax-dark: #2D6A4F;
 
   --approver: #a78bfa;
   --approver-bg: rgba(124, 58, 237, 0.12);
@@ -61,6 +65,10 @@
   --accent: #5B8DEF;
   --accent-bg: rgba(91, 141, 239, 0.12);
   --accent-soft: rgba(91, 141, 239, 0.4);
+  --accent-dark: #4A7ADF;
+
+  --syntax: #2D6A4F;
+  --syntax-dark: #2D6A4F;
 
   --approver: #6d28d9;
   --approver-bg: rgba(124, 58, 237, 0.12);
@@ -227,7 +235,7 @@ select {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #3A5FC4);
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -307,7 +315,7 @@ select {
 
 .nav-item.active svg {
   opacity: 1;
-  color: #9DBBF8;
+  color: var(--accent);
 }
 
 .sidebar-foot {
@@ -1149,7 +1157,7 @@ table tfoot td {
 .bulk-bar .count {
   font-weight: 650;
   font-family: var(--mono);
-  color: #9DBBF8;
+  color: var(--accent);
 }
 
 .bulk-bar .spacer {
@@ -1390,13 +1398,13 @@ table tfoot td {
 }
 
 .script-box {
-  background: #0A0D13;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 18px 20px;
   font-family: var(--mono);
   font-size: 12.8px;
-  color: #A8E6C5;
+  color: var(--syntax);
   line-height: 1.7;
   overflow-x: auto;
   white-space: pre;
@@ -1404,12 +1412,12 @@ table tfoot td {
 }
 
 :root.light-mode .script-box {
-  background: #1E293B;
-  color: #A8E6C5;
+  background: var(--panel-2);
+  color: var(--syntax-dark);
 }
 
 .script-box .kw {
-  color: #7AA2F7;
+  color: var(--accent);
 }
 
 .script-box .cm {
@@ -1612,7 +1620,7 @@ table tfoot td {
 
 .wa-cmd code {
   font-family: var(--mono);
-  color: #9DBBF8;
+  color: var(--accent);
 }
 
 .wa-cmd span {
@@ -1738,7 +1746,7 @@ table tfoot td {
 
 .page-header p {
   margin: 10px 0 0;
-  color: #9aa6b6;
+  color: var(--text-dim);
   max-width: 72ch;
 }
 
@@ -1773,18 +1781,18 @@ table tfoot td {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, #5fa3ff, #4d7dff);
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: white;
 }
 
 .primary-button:hover {
-  box-shadow: 0 6px 18px rgba(95, 163, 255, 0.25);
+  box-shadow: 0 6px 18px var(--accent-bg);
 }
 
 .ghost-button {
   background: rgba(255, 255, 255, .04);
-  color: #edf2f7;
-  border-color: rgba(145, 158, 171, .18);
+  color: var(--text);
+  border-color: var(--border);
 }
 
 .ghost-button:hover {
@@ -1792,13 +1800,13 @@ table tfoot td {
 }
 
 .danger-button {
-  background: rgba(239, 68, 68, .12);
-  color: #ffb4b4;
-  border-color: rgba(239, 68, 68, .2);
+  background: var(--crit-bg);
+  color: var(--crit);
+  border-color: var(--crit-soft);
 }
 
 .danger-button:hover {
-  background: rgba(239, 68, 68, .18);
+  background: var(--crit-soft);
 }
 
 .primary-button svg,
@@ -1832,7 +1840,7 @@ table tfoot td {
 }
 
 .metric-card .label {
-  color: #8d98a8;
+  color: var(--text-dim);
   font-size: 13px;
   font-weight: 600;
 }
@@ -1845,7 +1853,7 @@ table tfoot td {
 }
 
 .metric-card .hint {
-  color: #9aa6b6;
+  color: var(--text-dim);
   font-size: 13px;
   margin-top: 6px;
 }
@@ -1889,8 +1897,8 @@ table tfoot td {
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
-  border-color: #5fa3ff;
-  box-shadow: 0 0 0 3px rgba(95, 163, 255, .16);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 .search-input {
@@ -1950,7 +1958,7 @@ table tfoot td {
 }
 
 .data-table .muted {
-  color: #9aa6b6;
+  color: var(--text-dim);
 }
 
 .data-table .row-actions {
@@ -2010,7 +2018,7 @@ table tfoot td {
 }
 
 .badge.viewer {
-  color: #9aa6b6;
+  color: var(--text-dim);
   background: rgba(145, 158, 171, .12);
 }
 
@@ -2030,7 +2038,7 @@ table tfoot td {
 }
 
 .badge.accent {
-  color: #9DBBF8;
+  color: var(--accent);
   background: var(--accent-bg);
 }
 
@@ -2038,7 +2046,7 @@ table tfoot td {
 .empty-state {
   padding: 60px 28px 80px;
   text-align: center;
-  color: #9aa6b6;
+  color: var(--text-dim);
 }
 
 .empty-state svg {
@@ -2148,7 +2156,7 @@ table tfoot td {
 
 .form-header p {
   margin: 10px 0 0;
-  color: #9aa6b6;
+  color: var(--text-dim);
   max-width: 72ch;
 }
 
@@ -2173,7 +2181,7 @@ table tfoot td {
 
 .section-help {
   margin: 0 0 18px;
-  color: #8d98a8;
+  color: var(--text-dim);
   font-size: 13px;
 }
 
@@ -2235,7 +2243,7 @@ table tfoot td {
   width: 18px;
   height: 18px;
   margin-top: 2px;
-  accent-color: #5fa3ff;
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
@@ -2246,7 +2254,7 @@ table tfoot td {
 }
 
 .toggle-field small {
-  color: #98a5b8;
+  color: var(--text-dim);
   display: block;
 }
 
@@ -2620,7 +2628,7 @@ table tfoot td {
 
 :root.light-mode .script-box {
   background: #1E293B;
-  color: #A8E6C5;
+  color: var(--syntax);
 }
 
 :root.light-mode .select-box select {

@@ -15,8 +15,7 @@ Route::post('/v1/channels/whatsapp/webhook', [WhatsAppWebhookController::class, 
 Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
 
-    // Dashboard
-    Route::get('/dashboard/data', [\App\Http\Controllers\DashboardController::class, 'data']);
+    // Dashboard data (also in web.php for session auth)
 
     // Servers
     Route::get('/servers', [\App\Http\Controllers\ServerController::class, 'index']);

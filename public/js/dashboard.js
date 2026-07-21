@@ -4,6 +4,7 @@
 let INDEX_DATA = [];
 let currentFilter = 'all';
 let currentSearch = '';
+let currentServer = 'all';
 let sortKey = 'frag';
 let sortDir = -1;
 let dashboardPollController = null;
@@ -58,6 +59,11 @@ async function fetchDashboardData() {
     if (kpiWarning) kpiWarning.textContent = data.kpis?.warning ?? 0;
     if (kpiOk) kpiOk.textContent = data.kpis?.ok ?? 0;
 
+    // Update KPI subtitle
+    const kpiTotalSub = document.getElementById('kpi-total-sub');
+    const serverCount = data.servers?.length ?? 0;
+    if (kpiTotalSub) kpiTotalSub.textContent = 'En ' + serverCount + ' base' + (serverCount !== 1 ? 's' : '') + ' de datos';
+
     // Update donut
     const donut = document.getElementById('donut-total');
     const legendOk = document.getElementById('legend-ok');
@@ -67,6 +73,25 @@ async function fetchDashboardData() {
     if (legendOk) legendOk.textContent = data.kpis?.ok ?? 0;
     if (legendWarn) legendWarn.textContent = data.kpis?.warning ?? 0;
     if (legendCrit) legendCrit.textContent = data.kpis?.critical ?? 0;
+
+    // Update donut arcs dynamically
+    const total = data.kpis?.total ?? 0;
+    if (total > 0) {
+      const circumference = 2 * Math.PI * 58; // r=58
+      const okPct = (data.kpis?.ok ?? 0) / total;
+      const warnPct = (data.kpis?.warning ?? 0) / total;
+      const critPct = (data.kpis?.critical ?? 0) / total;
+      const okLen = okPct * circumference;
+      const warnLen = warnPct * circumference;
+      const critLen = critPct * circumference;
+
+      const arcOk = document.getElementById('arc-ok');
+      const arcWarn = document.getElementById('arc-warn');
+      const arcCrit = document.getElementById('arc-crit');
+      if (arcOk) { arcOk.setAttribute('stroke-dasharray', `${okLen} ${circumference - okLen}`); arcOk.setAttribute('stroke-dashoffset', '0'); }
+      if (arcWarn) { arcWarn.setAttribute('stroke-dasharray', `${warnLen} ${circumference - warnLen}`); arcWarn.setAttribute('stroke-dashoffset', `-${okLen}`); }
+      if (arcCrit) { arcCrit.setAttribute('stroke-dasharray', `${critLen} ${circumference - critLen}`); arcCrit.setAttribute('stroke-dashoffset', `-${okLen + warnLen}`); }
+    }
 
     // Update alerts with safe render
     if (alertFeed && data.alerts) {
@@ -82,7 +107,7 @@ async function fetchDashboardData() {
           item.innerHTML = `
             <span class="alert-dot" style="background:${severityColor}"></span>
             <div class="alert-body">
-              <div class="alert-text">${escapeHtml(a.text || '')}</div>
+              <div class="alert-text">${a.text || ''}</div>
               <div class="alert-time">${escapeHtml(a.time_ago || '')}</div>
             </div>`;
           alertFeed.appendChild(item);
@@ -94,6 +119,22 @@ async function fetchDashboardData() {
     if (data.indexes) {
       INDEX_DATA = data.indexes;
       if (indexTableBody) renderTable();
+      // Update indices page subtitle
+      const subtitle = document.getElementById('indicesSubtitle');
+      if (subtitle) subtitle.textContent = INDEX_DATA.length + ' índices · ordena, filtra y selecciona para ejecutar mantenimiento';
+    }
+
+    // Update server dropdown dynamically
+    if (data.servers) {
+      const dbSelect = document.getElementById('dbSelect');
+      if (dbSelect && dbSelect.options.length <= 1) {
+        data.servers.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name;
+          dbSelect.appendChild(opt);
+        });
+      }
     }
 
   } catch (e) {
@@ -114,6 +155,7 @@ function renderTable() {
   let rows = INDEX_DATA.filter(r => {
     const st = FRAG_STATUS(r.frag);
     if (currentFilter !== 'all' && st !== currentFilter) return false;
+    if (currentServer !== 'all' && String(r.server_id) !== String(currentServer)) return false;
     const q = currentSearch.toLowerCase();
     if (q && !r.index?.toLowerCase().includes(q) && !r.table?.toLowerCase().includes(q)) return false;
     return true;
@@ -180,6 +222,26 @@ function openDrawer(r) {
   if (dLast) dLast.textContent = r?.lastReorg || 'N/A';
   if (dAction) dAction.textContent = r?.action || 'OK';
 
+  // Update usage bars
+  const seeks = r?.user_seeks || 0;
+  const scans = r?.user_scans || 0;
+  const lookups = r?.user_lookups || 0;
+  const maxUsage = Math.max(seeks, scans, lookups, 1);
+
+  const seeksBar = document.getElementById('drawerUsageSeeks');
+  const scansBar = document.getElementById('drawerUsageScans');
+  const lookupsBar = document.getElementById('drawerUsageLookups');
+  const seeksVal = document.getElementById('drawerUsageSeeksVal');
+  const scansVal = document.getElementById('drawerUsageScansVal');
+  const lookupsVal = document.getElementById('drawerUsageLookupsVal');
+
+  if (seeksBar) seeksBar.style.width = ((seeks / maxUsage) * 100) + '%';
+  if (scansBar) scansBar.style.width = ((scans / maxUsage) * 100) + '%';
+  if (lookupsBar) lookupsBar.style.width = ((lookups / maxUsage) * 100) + '%';
+  if (seeksVal) seeksVal.textContent = seeks.toLocaleString();
+  if (scansVal) scansVal.textContent = scans.toLocaleString();
+  if (lookupsVal) lookupsVal.textContent = lookups.toLocaleString();
+
   drawer.classList.add('show');
   overlay.classList.add('show');
 }
@@ -201,6 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Search/filter/sort listeners
   document.getElementById('searchInput')?.addEventListener('input', e => { currentSearch = e.target.value; renderTable(); });
+  document.getElementById('dbSelect')?.addEventListener('change', e => { currentServer = e.target.value; renderTable(); });
   document.querySelectorAll('#filterPills .pill').forEach(p => {
     p.addEventListener('click', () => {
       document.querySelectorAll('#filterPills .pill').forEach(x => x.classList.remove('active'));

@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Server;
 use App\Services\WhatsApp\WhatsAppService;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        View::composer('layouts.app', function ($view) {
+            $server = Server::active()->first();
+            $view->with('activeServer', $server);
+        });
     }
 }

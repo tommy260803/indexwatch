@@ -35,6 +35,15 @@ Route::middleware('auth')->group(function () {
     
     // API dashboard data (kept in web for CSRF)
     Route::get('/api/dashboard/data', [DashboardController::class, 'data']);
+    Route::get('/api/maintenance-actions/data', [MaintenanceActionController::class, 'data']);
+    Route::post('/api/maintenance-actions/execute', [MaintenanceActionController::class, 'execute']);
+    Route::post('/api/maintenance-actions/schedule', [MaintenanceActionController::class, 'schedule']);
+    Route::patch('/api/maintenance-actions/{action}/type', [MaintenanceActionController::class, 'updateType']);
+    Route::delete('/api/maintenance-actions/{action}', [MaintenanceActionController::class, 'cancel']);
+    Route::get('/api/settings', [\App\Http\Controllers\SettingsController::class, 'data']);
+    Route::post('/api/settings/thresholds', [\App\Http\Controllers\SettingsController::class, 'saveThresholds']);
+    Route::post('/api/settings/whatsapp', [\App\Http\Controllers\SettingsController::class, 'saveWhatsappNumber']);
+    Route::post('/api/settings/notifications', [\App\Http\Controllers\SettingsController::class, 'saveNotifications']);
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

@@ -7,6 +7,7 @@
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @stack('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ asset('css/crud.css') }}">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <script>
     (function() {
@@ -82,8 +83,8 @@
         </svg>
         <span id="theme-label">Modo oscuro</span>
       </button>
-      <div class="pulse-row"><span class="dot-live"></span> Conectado · SQL01-PROD</div>
-      <div>Último barrido: hace 4 min</div>
+      <div class="pulse-row"><span class="dot-live"></span> {{ $activeServer ? 'Conectado · ' . e($activeServer->name) : 'Sin servidor activo' }}</div>
+      <div>Último barrido: {{ $activeServer && $activeServer->last_scanned_at ? $activeServer->last_scanned_at->diffForHumans() : 'Nunca' }}</div>
     </div>
     <!-- User Profile Section -->
     <div class="user-profile-section">

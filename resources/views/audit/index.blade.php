@@ -55,6 +55,13 @@
     </section>
 
     <script>
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         let auditPage = 1;
         async function loadAuditLogs() {
             const params = new URLSearchParams();
@@ -69,32 +76,44 @@
             if (to) params.set('date_to', to);
 
             try {
-                const res = await fetch('/api/audit-logs?' + params.toString());
+                const res = await fetch('/api/audit-logs?' + params.toString(), { credentials: 'same-origin' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 const tbody = document.getElementById('auditLogsBody');
                 if (!data.data?.length) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;">Sin registros</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Sin registros de auditoría</td></tr>';
+                    document.getElementById('auditPagination').innerHTML = '';
                     return;
                 }
-                tbody.innerHTML = data.data.map(log => `
-                    <tr style="border-bottom:1px solid var(--border);font-size:13px;">
-                        <td style="padding:8px;color:var(--text-faint);font-size:11px;">${log.created_at || ''}</td>
-                        <td style="padding:8px;">${log.server?.name || 'N/A'}</td>
-                        <td style="padding:8px;">${log.actor_type || ''}</td>
-                        <td style="padding:8px;">${log.source || ''}</td>
-                        <td style="padding:8px;">${log.action || ''}</td>
-                        <td style="padding:8px;max-width:300px;overflow:hidden;text-overflow:ellipsis;">${log.description || ''}</td>
-                    </tr>`).join('');
-                // Pagination
+                tbody.innerHTML = data.data.map(log => {
+                    return '<tr style="border-bottom:1px solid var(--border);font-size:13px;">'
+                        + '<td style="padding:8px;color:var(--text-faint);font-size:11px;">' + escapeHtml(log.created_at || '') + '</td>'
+                        + '<td style="padding:8px;">' + escapeHtml(log.server?.name || 'N/A') + '</td>'
+                        + '<td style="padding:8px;">' + escapeHtml(log.actor_type || '') + '</td>'
+                        + '<td style="padding:8px;">' + escapeHtml(log.source || '') + '</td>'
+                        + '<td style="padding:8px;"><span class="badge ' + getAuditBadgeClass(log.action) + '">' + escapeHtml(log.action || '') + '</span></td>'
+                        + '<td style="padding:8px;max-width:300px;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(log.description || '') + '</td>'
+                        + '</tr>';
+                }).join('');
                 let pages = '';
                 for (let i = 1; i <= data.last_page; i++) {
-                    pages += `<button onclick="auditPage=${i};loadAuditLogs()" style="background:${i===auditPage?'var(--accent)':'var(--panel-2)'};border:1px solid var(--border);border-radius:5px;padding:4px 10px;color:var(--text);cursor:pointer;font-size:12px;">${i}</button>`;
+                    pages += '<button onclick="auditPage=' + i + ';loadAuditLogs()" style="background:' + (i===auditPage?'var(--accent)':'var(--panel-2)') + ';border:1px solid var(--border);border-radius:5px;padding:4px 10px;color:var(--text);cursor:pointer;font-size:12px;">' + i + '</button>';
                 }
                 document.getElementById('auditPagination').innerHTML = pages;
             } catch(e) {
-                document.getElementById('auditLogsBody').innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--crit);">Error al cargar</td></tr>';
+                document.getElementById('auditLogsBody').innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--crit);">Error al cargar registros</td></tr>';
             }
         }
+
+        function getAuditBadgeClass(action) {
+            if (!action) return '';
+            const a = action.toLowerCase();
+            if (a.includes('fail') || a.includes('error')) return 'crit';
+            if (a.includes('execut') || a.includes('succeed')) return 'ok';
+            if (a.includes('cancel')) return 'warn';
+            return '';
+        }
+
         document.addEventListener('DOMContentLoaded', loadAuditLogs);
     </script>
 </x-app-layout>

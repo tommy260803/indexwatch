@@ -1,7 +1,4 @@
 <x-app-layout>
-    <!-- ============================================================ -->
-    <!-- PAGE 4 — CONFIGURACIÓN Y ALERTAS                              -->
-    <!-- ============================================================ -->
     <section class="page active">
       <div class="page-head">
         <div>
@@ -41,7 +38,7 @@
           </div>
 
           <div class="save-bar">
-            <button class="btn btn-primary" onclick="showToast('Umbrales guardados correctamente')">Guardar umbrales</button>
+            <button class="btn btn-primary" onclick="saveThresholds()">Guardar umbrales</button>
           </div>
         </div>
 
@@ -52,21 +49,21 @@
               <div class="lbl-main">Alertas por correo</div>
               <div class="lbl-sub">Recibe un resumen diario de índices críticos</div>
             </div>
-            <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+            <label class="switch"><input type="checkbox" checked id="toggleEmail" onchange="saveNotification('email', this.checked)"><span class="track"></span></label>
           </div>
           <div class="toggle-row">
             <div>
               <div class="lbl-main">Alertas en tiempo real</div>
               <div class="lbl-sub">Notifica al instante cuando un índice supera el umbral crítico</div>
             </div>
-            <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+            <label class="switch"><input type="checkbox" checked id="toggleRealtime" onchange="saveNotification('realtime', this.checked)"><span class="track"></span></label>
           </div>
           <div class="toggle-row">
             <div>
               <div class="lbl-main">Resumen semanal</div>
               <div class="lbl-sub">Reporte de tendencias enviado todos los lunes</div>
             </div>
-            <label class="switch"><input type="checkbox"><span class="track"></span></label>
+            <label class="switch"><input type="checkbox" id="toggleWeekly" onchange="saveNotification('weekly', this.checked)"><span class="track"></span></label>
           </div>
         </div>
       </div>
@@ -74,13 +71,13 @@
       <div class="panel" style="margin-top:16px;">
         <div class="panel-head">
           <span class="panel-title">Integración con WhatsApp</span>
-          <span class="badge ok">Conectado</span>
+          <span class="badge ok" id="waStatus">Conectado</span>
         </div>
         <div class="field-group">
           <label class="field-label">Número de WhatsApp para alertas</label>
           <div class="wa-input-row">
-            <input type="text" value="+51 987 654 321" id="waNumber">
-            <button class="btn" onclick="showToast('Número actualizado')">Actualizar</button>
+            <input type="text" value="" id="waNumber" placeholder="Cargando...">
+            <button class="btn" onclick="saveWhatsappNumber()">Actualizar</button>
           </div>
           <div class="field-hint">Las alertas críticas se enviarán a este número en tiempo real.</div>
         </div>
@@ -100,8 +97,126 @@
             <div class="lbl-main">Permitir comandos de ejecución por WhatsApp</div>
             <div class="lbl-sub">Si está desactivado, solo se podrán consultar estados, no ejecutar acciones</div>
           </div>
-          <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+          <label class="switch"><input type="checkbox" checked id="toggleWaCommands" onchange="saveNotification('whatsapp_commands', this.checked)"><span class="track"></span></label>
         </div>
       </div>
     </section>
+
+    <script>
+    async function fetchSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        const reorg = document.getElementById('reorgThreshold');
+        const rebuild = document.getElementById('rebuildThreshold');
+        if (reorg) { reorg.value = data.thresholds.warning; updateThreshold('reorg'); }
+        if (rebuild) { rebuild.value = data.thresholds.critical; updateThreshold('rebuild'); }
+
+        const waNumber = document.getElementById('waNumber');
+        if (waNumber && data.contacts && data.contacts.length) {
+          waNumber.value = data.contacts[0].phone_number || '';
+        }
+
+        if (data.notifications) {
+          const email = document.getElementById('toggleEmail');
+          const realtime = document.getElementById('toggleRealtime');
+          const weekly = document.getElementById('toggleWeekly');
+          const waCmd = document.getElementById('toggleWaCommands');
+          if (email) email.checked = data.notifications.email;
+          if (realtime) realtime.checked = data.notifications.realtime;
+          if (weekly) weekly.checked = data.notifications.weekly;
+          if (waCmd) waCmd.checked = data.notifications.whatsapp_commands;
+        }
+      } catch (e) {
+        console.error('Error fetching settings:', e);
+      }
+    }
+
+    function updateThreshold(type) {
+      if (type === 'reorg') {
+        document.getElementById('reorgVal').textContent = document.getElementById('reorgThreshold').value + '%';
+      } else {
+        document.getElementById('rebuildVal').textContent = document.getElementById('rebuildThreshold').value + '%';
+      }
+    }
+
+    async function saveThresholds() {
+      const warning = document.getElementById('reorgThreshold').value;
+      const critical = document.getElementById('rebuildThreshold').value;
+      try {
+        const res = await fetch('/api/settings/thresholds', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({ warning: parseFloat(warning), critical: parseFloat(critical) }),
+        });
+        if (res.ok) {
+          showToast('Umbrales guardados correctamente');
+        } else {
+          showToast('Error al guardar umbrales');
+        }
+      } catch (e) {
+        showToast('Error de conexión');
+      }
+    }
+
+    async function saveWhatsappNumber() {
+      const phone = document.getElementById('waNumber').value;
+      if (!phone) return showToast('Ingresa un número');
+      try {
+        const res = await fetch('/api/settings/whatsapp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({ phone_number: phone }),
+        });
+        if (res.ok) {
+          showToast('Número actualizado correctamente');
+        } else {
+          showToast('Error al actualizar número');
+        }
+      } catch (e) {
+        showToast('Error de conexión');
+      }
+    }
+
+    async function saveNotification(key, value) {
+      const toggles = {
+        email: document.getElementById('toggleEmail')?.checked ?? true,
+        realtime: document.getElementById('toggleRealtime')?.checked ?? true,
+        weekly: document.getElementById('toggleWeekly')?.checked ?? false,
+        whatsapp_commands: document.getElementById('toggleWaCommands')?.checked ?? true,
+      };
+      toggles[key] = value;
+
+      try {
+        const res = await fetch('/api/settings/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(toggles),
+        });
+        if (res.ok) {
+          showToast('Preferencias guardadas');
+        } else {
+          showToast('Error al guardar preferencias');
+        }
+      } catch (e) {
+        showToast('Error de conexión');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchSettings);
+    </script>
 </x-app-layout>

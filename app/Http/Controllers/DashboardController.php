@@ -17,7 +17,10 @@ class DashboardController extends Controller
 
     public function data()
     {
-        $indexes = SqlIndex::with('server')->active()->get();
+        $activeServerIds = Server::active()->pluck('id');
+        $indexes = SqlIndex::with('server')->active()
+            ->whereIn('server_id', $activeServerIds)
+            ->get();
 
         $total = $indexes->count();
         $critical = $indexes->where('fragmentation_percent', '>', 30)->count();
@@ -25,6 +28,7 @@ class DashboardController extends Controller
         $ok = $indexes->where('fragmentation_percent', '<', 5)->count();
 
         $alerts = Alert::with(['sqlIndex', 'server', 'approvedBy'])
+            ->whereIn('server_id', $activeServerIds)
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get()
@@ -67,6 +71,7 @@ class DashboardController extends Controller
             }
 
             return [
+                'server_id' => $idx->server_id,
                 'server' => $idx->server->name ?? '—',
                 'schema' => $idx->schema_name,
                 'table' => $idx->table_name,
@@ -77,6 +82,10 @@ class DashboardController extends Controller
                 'action' => $action,
                 'reads' => $idx->getTotalReads(),
                 'writes' => $idx->getTotalWrites(),
+                'user_seeks' => $idx->user_seeks ?? 0,
+                'user_scans' => $idx->user_scans ?? 0,
+                'user_lookups' => $idx->user_lookups ?? 0,
+                'user_updates' => $idx->user_updates ?? 0,
                 'type' => $idx->type?->value,
                 'is_pk' => $idx->is_primary_key,
                 'is_unique' => $idx->is_unique,

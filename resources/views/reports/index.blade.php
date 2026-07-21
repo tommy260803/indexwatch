@@ -53,56 +53,81 @@
     </section>
 
     <script>
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             loadReports();
-            // Load servers for filter
-            fetch('/api/dashboard/data').then(r => r.json()).then(d => {
+            fetch('/api/dashboard/data', { credentials: 'same-origin' }).then(r => r.json()).then(d => {
                 const sel = document.getElementById('reportServer');
                 (d.servers || []).forEach(s => {
-                    sel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.name;
+                    sel.appendChild(opt);
                 });
-            });
+            }).catch(() => {});
         });
 
         async function generateReport() {
             const serverId = document.getElementById('reportServer').value;
             const format = document.getElementById('reportFormat').value;
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Generando...';
             try {
                 const res = await fetch('/api/reports', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    credentials: 'same-origin',
                     body: JSON.stringify({server_id: serverId || null, filters: {}, format: format})
                 });
                 const data = await res.json();
                 if (data.data) {
                     loadReports();
-                    alert('Reporte solicitado. Recarga en unos segundos.');
+                    showToast('Reporte solicitado. Recarga en unos segundos.');
+                } else {
+                    showToast('Error al generar reporte');
                 }
             } catch(e) {
-                alert('Error al generar reporte');
+                showToast('Error al generar reporte');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generar Reporte';
             }
         }
 
         async function loadReports() {
             try {
-                const res = await fetch('/api/reports?per_page=20');
+                const res = await fetch('/api/reports?per_page=20', { credentials: 'same-origin' });
                 const data = await res.json();
                 const tbody = document.getElementById('reportTableBody');
                 if (!data.data?.length) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;">Sin reportes</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Sin reportes generados</td></tr>';
                     return;
                 }
-                tbody.innerHTML = data.data.map(r => `
-                    <tr style="border-bottom:1px solid var(--border);font-size:13px;">
-                        <td style="padding:8px;">${r.server?.name || 'Todos'}</td>
-                        <td style="padding:8px;">${r.format}</td>
-                        <td style="padding:8px;"><span class="badge ${r.status === 'completed' ? 'ok' : r.status === 'failed' ? 'crit' : 'warn'}">${r.status}</span></td>
-                        <td style="padding:8px;font-size:11px;color:var(--text-faint);">${r.created_at || ''}</td>
-                        <td style="padding:8px;font-size:11px;color:var(--text-faint);">${r.expires_at || ''}</td>
-                        <td style="padding:8px;">
-                            ${r.status === 'completed' ? `<a href="/api/reports/${r.id}/download" class="btn btn-primary" style="font-size:11px;padding:2px 8px;">Descargar</a>` : '—'}
-                        </td>
-                    </tr>`).join('');
+                tbody.innerHTML = data.data.map(r => {
+                    const statusClass = r.status === 'completed' ? 'ok' : r.status === 'failed' ? 'crit' : 'warn';
+                    const downloadLink = r.status === 'completed'
+                        ? '<a href="/api/reports/' + r.id + '/download" class="btn btn-primary" style="font-size:11px;padding:2px 8px;">Descargar</a>'
+                        : '—';
+                    return '<tr style="border-bottom:1px solid var(--border);font-size:13px;">'
+                        + '<td style="padding:8px;">' + escapeHtml(r.server?.name || 'Todos') + '</td>'
+                        + '<td style="padding:8px;">' + escapeHtml(r.format) + '</td>'
+                        + '<td style="padding:8px;"><span class="badge ' + statusClass + '">' + escapeHtml(r.status) + '</span></td>'
+                        + '<td style="padding:8px;font-size:11px;color:var(--text-faint);">' + escapeHtml(r.created_at || '') + '</td>'
+                        + '<td style="padding:8px;font-size:11px;color:var(--text-faint);">' + escapeHtml(r.expires_at || '') + '</td>'
+                        + '<td style="padding:8px;">' + downloadLink + '</td>'
+                        + '</tr>';
+                }).join('');
             } catch(e) {
                 document.getElementById('reportTableBody').innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--crit);">Error al cargar</td></tr>';
             }

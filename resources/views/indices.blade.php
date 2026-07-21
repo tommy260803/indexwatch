@@ -7,14 +7,11 @@
         <div>
           <div class="page-eyebrow">Inventario completo</div>
           <div class="page-title">Lista de índices</div>
-          <div class="page-sub">186 índices · ordena, filtra y selecciona para ejecutar mantenimiento</div>
+          <div class="page-sub" id="indicesSubtitle">Cargando índices...</div>
         </div>
         <div class="select-box">
           <select id="dbSelect">
-            <option>Ventas</option>
-            <option>CRM</option>
-            <option>Inventario</option>
-            <option>Todas las bases</option>
+            <option value="all">Todas las bases</option>
           </select>
         </div>
       </div>
@@ -55,7 +52,7 @@
             <!-- rows injected by JS -->
           </tbody>
           <tfoot>
-            <tr><td colspan="7" id="tableFootCount">Mostrando 186 de 186 índices</td></tr>
+            <tr><td colspan="7" id="tableFootCount">Cargando...</td></tr>
           </tfoot>
         </table>
       </div>
@@ -116,18 +113,18 @@
           <div class="usage-bars">
             <div class="usage-row">
               <span class="usage-label">user_seeks</span>
-              <div class="usage-track"><div class="usage-fill" style="width:88%;background:var(--accent)"></div></div>
-              <span class="usage-val">128,402</span>
+              <div class="usage-track"><div class="usage-fill" id="drawerUsageSeeks" style="width:0%;background:var(--accent)"></div></div>
+              <span class="usage-val" id="drawerUsageSeeksVal">0</span>
             </div>
             <div class="usage-row">
               <span class="usage-label">user_scans</span>
-              <div class="usage-track"><div class="usage-fill" style="width:24%;background:var(--accent)"></div></div>
-              <span class="usage-val">3,118</span>
+              <div class="usage-track"><div class="usage-fill" id="drawerUsageScans" style="width:0%;background:var(--accent)"></div></div>
+              <span class="usage-val" id="drawerUsageScansVal">0</span>
             </div>
             <div class="usage-row">
               <span class="usage-label">user_lookups</span>
-              <div class="usage-track"><div class="usage-fill" style="width:46%;background:var(--accent)"></div></div>
-              <span class="usage-val">19,775</span>
+              <div class="usage-track"><div class="usage-fill" id="drawerUsageLookups" style="width:0%;background:var(--accent)"></div></div>
+              <span class="usage-val" id="drawerUsageLookupsVal">0</span>
             </div>
           </div>
           <div class="field-hint" style="margin-top:10px;">Alto número de seeks indica que este índice es usado frecuentemente por el optimizador: no es candidato a eliminación.</div>

@@ -1,80 +1,8 @@
 <x-app-layout>
     @push('styles')
         <style>
-            .servers-page {
-                padding: 28px;
-                color: var(--text);
-            }
-            .page-shell {
-                background: linear-gradient(180deg, var(--panel), var(--panel-2));
-                border: 1px solid var(--border);
-                border-radius: 28px;
-                box-shadow: 0 28px 80px rgba(0, 0, 0, .35);
-                overflow: hidden;
-            }
-            .page-header {
-                display:flex; align-items:flex-start; justify-content:space-between; gap:20px;
-                padding: 28px;
-                border-bottom: 1px solid var(--border);
-                background: radial-gradient(circle at top left, rgba(96, 165, 250, .12), transparent 45%);
-            }
-            .eyebrow {
-                text-transform: uppercase;
-                letter-spacing: .14em;
-                font-size: 11px;
-                color: var(--accent);
-                margin-bottom: 10px;
-            }
-            .page-header h1 { margin: 0; font-size: 30px; line-height: 1.1; color: var(--text); }
-            .page-header p { margin: 10px 0 0; color: var(--text-dim); max-width: 72ch; }
-            .header-actions { display:flex; gap:12px; flex-wrap:wrap; }
-            .primary-button, .ghost-button {
-                display:inline-flex; align-items:center; justify-content:center; gap:8px;
-                border-radius: 16px; padding: 13px 18px; border:1px solid transparent;
-                font-weight: 700; text-decoration:none; cursor:pointer;
-            }
-            .primary-button { background: linear-gradient(135deg, #5fa3ff, #4d7dff); color: white; }
-            .ghost-button { background: var(--panel-2); color: var(--text); border-color: var(--border); }
-            .stats-grid {
-                display:grid; gap:16px; grid-template-columns: repeat(4, minmax(0, 1fr));
-                padding: 28px;
-            }
-            .info-card {
-                background: var(--panel);
-                border: 1px solid var(--border);
-                border-radius: 24px;
-                padding: 20px;
-            }
-            .info-card .label { color: var(--text-dim); font-size: 13px; }
-            .info-card .value { font-size: 20px; font-weight: 800; margin-top: 8px; color: var(--text); }
-            .section-grid { display:grid; gap:20px; padding: 0 28px 28px; }
-            .section-card {
-                background: var(--panel);
-                border: 1px solid var(--border);
-                border-radius: 24px;
-                padding: 22px;
-            }
-            .section-card h2 { margin: 0 0 14px; font-size: 18px; color: var(--text); }
-            .detail-grid { display:grid; gap:16px; grid-template-columns: repeat(2, minmax(0,1fr)); }
-            .field { padding:16px; border-radius:18px; background: var(--panel-2); border:1px solid var(--border); }
-            .field .label { color: var(--text-dim); font-size: 13px; margin-bottom: 8px; }
-            .field .value { font-weight:700; color: var(--text); }
-            .badge {
-                display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px;
-                border:1px solid rgba(145,158,171,.16); font-size: 12px; font-weight:700;
-            }
-            .badge.active { color:var(--ok); background: var(--ok-bg); }
-            .badge.inactive { color:var(--warn); background: var(--warn-bg); }
-            .badge.maintenance { color:var(--accent); background: var(--accent-bg); }
-            .badge.ok { color:var(--ok); background: var(--ok-bg); }
-            .badge.warn { color:var(--warn); background: var(--warn-bg); }
-            .badge.crit { color:var(--crit); background: var(--crit-bg); }
-            .list { display:flex; flex-wrap:wrap; gap:10px; }
-            .chip { padding: 8px 12px; border-radius: 999px; background: rgba(95,163,255,.10); border: 1px solid rgba(95,163,255,.18); }
-            .muted { color: var(--text-dim); }
-            @media (max-width: 1100px) {
-                .stats-grid, .detail-grid { grid-template-columns: 1fr; }
-            }
+            .servers-page { padding: 28px; color: var(--text); }
+            .list { display: flex; flex-wrap: wrap; gap: 10px; }
         </style>
     @endpush
 
