@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Server;
 use App\Services\WhatsApp\WhatsAppService;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -33,5 +34,19 @@ class AppServiceProvider extends ServiceProvider
             $server = Server::active()->first();
             $view->with('activeServer', $server);
         });
+
+        // Forzar HTTPS para todos los links generados
+        if (
+            $this->app->environment('production') ||
+            request()->server('HTTP_X_FORWARDED_PROTO') === 'https' ||
+            request()->server('HTTPS') === 'on'
+        ) {
+            URL::forceScheme('https');
+        }
+
+        // Alternativa: si APP_URL comienza con https
+        if (str_starts_with(config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
     }
 }

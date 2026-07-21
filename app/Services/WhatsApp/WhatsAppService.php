@@ -72,11 +72,18 @@ class WhatsAppService
 
     public function sendConfirmation(string $to, string $message): ?array
     {
+        Log::info('WhatsApp: sendConfirmation START', ['to' => $to, 'message_length' => strlen($message)]);
+
         $response = $this->client()->post($this->baseUrl, [
             'messaging_product' => 'whatsapp',
             'to' => $to,
             'type' => 'text',
             'text' => ['body' => $message],
+        ]);
+
+        Log::info('WhatsApp: sendConfirmation response received', [
+            'status_code' => $response->status(),
+            'response_body' => $response->body(),
         ]);
 
         return $this->handleResponse($response, 'sendConfirmation');
@@ -103,61 +110,61 @@ class WhatsAppService
         $action = $alert->recommended_action?->value ?? 'REVIEW';
 
         return "🚨 *ALERTA INDEXWATCH*\n\n"
-            ."📋 *Recurso:* {$subject}\n"
-            ."⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
-            ."📊 *Severidad:* {$alert->getSeverityLabel()}{$frag}\n"
-            ."💾 *Tamaño:* {$size} MB\n"
-            ."🎯 *Acción recomendada:* {$action}\n\n"
-            .'¿Qué desea hacer?';
+            . "📋 *Recurso:* {$subject}\n"
+            . "⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
+            . "📊 *Severidad:* {$alert->getSeverityLabel()}{$frag}\n"
+            . "💾 *Tamaño:* {$size} MB\n"
+            . "🎯 *Acción recomendada:* {$action}\n\n"
+            . '¿Qué desea hacer?';
     }
 
     private function buildStatsAlertMessage(string $subject, Alert $alert): string
     {
         return "📉 *ESTADÍSTICAS OBSOLETAS — IndexWatch*\n\n"
-            ."📋 *Recurso:* {$subject}\n"
-            ."⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
-            ."📊 *Severidad:* {$alert->getSeverityLabel()}\n\n"
-            ."Las estadísticas necesitan actualización para mantener planes de consulta óptimos.\n\n"
-            .'¿Qué desea hacer?';
+            . "📋 *Recurso:* {$subject}\n"
+            . "⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
+            . "📊 *Severidad:* {$alert->getSeverityLabel()}\n\n"
+            . "Las estadísticas necesitan actualización para mantener planes de consulta óptimos.\n\n"
+            . '¿Qué desea hacer?';
     }
 
     private function buildMissingIndexMessage(string $subject, Alert $alert): string
     {
         return "🔍 *ÍNDICE FALTANTE — IndexWatch*\n\n"
-            ."📋 *Recurso:* {$subject}\n"
-            ."⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
-            ."📊 *Severidad:* {$alert->getSeverityLabel()}\n\n"
-            ."Se detectó un índice faltante que podría mejorar significativamente el rendimiento.\n\n"
-            .'¿Qué desea hacer?';
+            . "📋 *Recurso:* {$subject}\n"
+            . "⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
+            . "📊 *Severidad:* {$alert->getSeverityLabel()}\n\n"
+            . "Se detectó un índice faltante que podría mejorar significativamente el rendimiento.\n\n"
+            . '¿Qué desea hacer?';
     }
 
     private function buildInactiveIndexMessage(string $subject, Alert $alert): string
     {
         return "💤 *ÍNDICE INACTIVO — IndexWatch*\n\n"
-            ."📋 *Recurso:* {$subject}\n"
-            ."⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
-            ."📊 *Severidad:* {$alert->getSeverityLabel()}\n\n"
-            ."Este índice no tiene uso reciente y consume espacio y recursos.\n\n"
-            .'¿Qué desea hacer?';
+            . "📋 *Recurso:* {$subject}\n"
+            . "⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
+            . "📊 *Severidad:* {$alert->getSeverityLabel()}\n\n"
+            . "Este índice no tiene uso reciente y consume espacio y recursos.\n\n"
+            . '¿Qué desea hacer?';
     }
 
     private function buildHeapMessage(string $subject, Alert $alert): string
     {
         return "🏚️ *HEAP DETECTADO — IndexWatch*\n\n"
-            ."📋 *Recurso:* {$subject}\n"
-            ."⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
-            ."📊 *Severidad:* {$alert->getSeverityLabel()}\n\n"
-            ."La tabla no tiene índice clustered, lo que afecta rendimiento y consumo de espacio.\n\n"
-            .'¿Qué desea hacer?';
+            . "📋 *Recurso:* {$subject}\n"
+            . "⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
+            . "📊 *Severidad:* {$alert->getSeverityLabel()}\n\n"
+            . "La tabla no tiene índice clustered, lo que afecta rendimiento y consumo de espacio.\n\n"
+            . '¿Qué desea hacer?';
     }
 
     private function buildGenericAlertMessage(string $subject, Alert $alert): string
     {
         return "🚨 *ALERTA INDEXWATCH*\n\n"
-            ."📋 *Recurso:* {$subject}\n"
-            ."⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
-            ."📊 *Severidad:* {$alert->getSeverityLabel()}\n\n"
-            .'¿Qué desea hacer?';
+            . "📋 *Recurso:* {$subject}\n"
+            . "⚠️ *Tipo:* {$alert->getTypeLabel()}\n"
+            . "📊 *Severidad:* {$alert->getSeverityLabel()}\n\n"
+            . '¿Qué desea hacer?';
     }
 
     private function client(): PendingRequest

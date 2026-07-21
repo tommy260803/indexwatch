@@ -14,9 +14,9 @@ class SqlServerCapabilityService
         SELECT
             CONVERT(nvarchar(128), SERVERPROPERTY(N'ServerName')) AS server_name,
             CONVERT(nvarchar(128), SERVERPROPERTY(N'ProductVersion')) AS product_version,
-            TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion')) AS product_major_version,
+            CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion')) AS product_major_version,
             CONVERT(nvarchar(128), SERVERPROPERTY(N'Edition')) AS edition,
-            TRY_CONVERT(int, SERVERPROPERTY(N'EngineEdition')) AS engine_edition,
+            CONVERT(int, SERVERPROPERTY(N'EngineEdition')) AS engine_edition,
             DB_NAME() AS database_name,
             CONVERT(int, HAS_PERMS_BY_NAME(DB_NAME(), N'DATABASE', N'VIEW DEFINITION')) AS has_view_definition,
             CONVERT(int, HAS_PERMS_BY_NAME(DB_NAME(), N'DATABASE', N'VIEW DATABASE STATE')) AS has_view_database_state,
