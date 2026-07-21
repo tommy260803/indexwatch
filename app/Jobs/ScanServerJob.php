@@ -17,10 +17,14 @@ class ScanServerJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    // El job puede fallar por red, SQL Server o bloqueo temporal.
+    // Estos límites evitan reintentos infinitos y jobs colgados.
     public int $tries = 3;
 
     public int $timeout = 300;
 
+    // La unicidad cubre el caso en que se dispare el mismo escaneo dos veces.
+    // Así evitamos duplicar lecturas, alertas y escrituras sobre el mismo servidor.
     public int $uniqueFor = 600;
 
     public readonly string $correlationId;
@@ -47,12 +51,16 @@ class ScanServerJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(ServerScanService $scanner): void
     {
+        // Si el servidor fue eliminado o desactivado, salir temprano es más seguro
+        // que intentar conectar y producir errores innecesarios.
         $server = Server::query()->find($this->serverId);
 
         if ($server === null || ! $server->isActive()) {
             return;
         }
 
+        // Este servicio concentra toda la lógica pesada del escaneo.
+        // El job solo orquesta y deja la ejecución real en un servicio testeable.
         $scanner->scan($server, $this->correlationId);
     }
 }

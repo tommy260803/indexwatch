@@ -11,6 +11,8 @@ class HealthScoreService
         int $staleStatistics,
         int $sustainedPageSplitIndexes,
     ): HealthScoreResult {
+        // El score parte de 100 y se descuenta por tipos de riesgo distintos.
+        // Cada tipo tiene un cap para que una sola categoría no arruine toda la lectura.
         $settings = config('indexwatch.health_score');
         $criticalDeduction = min(
             $criticalIndexes * $settings['critical_index_penalty'],
@@ -26,6 +28,7 @@ class HealthScoreService
         );
         $totalDeduction = $criticalDeduction + $statisticsDeduction + $pageSplitDeduction;
 
+        // La versión del algoritmo queda persistida para poder comparar cambios en el futuro.
         return new HealthScoreResult(
             score: max(0, 100 - $totalDeduction),
             version: $settings['version'],
@@ -56,6 +59,8 @@ class HealthScoreService
     /** @param list<string> $unavailableComponents */
     public function incomplete(array $unavailableComponents): HealthScoreResult
     {
+        // Cuando faltan baselines, preferimos decir "no calculado" antes que
+        // dar un número que parezca exacto pero no lo sea.
         return new HealthScoreResult(
             score: null,
             version: config('indexwatch.health_score.version'),

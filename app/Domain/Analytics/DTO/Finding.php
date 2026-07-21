@@ -9,8 +9,8 @@ use App\Domain\Analytics\Enums\FindingType;
 final readonly class Finding
 {
     /**
-     * @param list<Evidence> $evidence
-     * @param array<string, mixed> $metadata
+     * @param  list<Evidence>  $evidence
+     * @param  array<string, mixed>  $metadata
      */
     public function __construct(
         public FindingType $type,
@@ -31,8 +31,9 @@ final readonly class Finding
     public function toAlertData(): array
     {
         return [
-            'alert_type' => $this->type->value,
-            'severity' => $this->severity,
+            'fingerprint' => $this->fingerprint,
+            'alert_type' => $this->type->toAlertType(),
+            'severity' => $this->severity->toAlertSeverity(),
             'status' => 'pending',
             'recommended_action' => $this->recommendedAction,
             'fragmentation_percent' => $this->metadata['fragmentation_percent'] ?? null,

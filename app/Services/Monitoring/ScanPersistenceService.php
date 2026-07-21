@@ -27,6 +27,8 @@ class ScanPersistenceService
         \DateTimeInterface $scannedAt,
         int $scanRunId,
     ): ScanPersistenceResult {
+        // La transacción asegura que índices, snapshots, estadísticas y score
+        // queden alineados. Si algo falla, nada se queda a medias.
         return DB::transaction(function () use ($server, $result, $scannedAt, $scanRunId): ScanPersistenceResult {
             $previousStartedAt = $server->sql_server_started_at;
             $sameCounterEpoch = $previousStartedAt !== null
@@ -38,6 +40,8 @@ class ScanPersistenceService
             $usageAvailable = ! isset($result->warnings['usage']);
 
             foreach ($result->indexes as $metric) {
+                // Este upsert mantiene el catálogo de índices sincronizado con SQL Server.
+                // Se usa la clave física del índice, no solo el nombre visible.
                 $attributes = [
                     'schema_name' => $metric->schemaName,
                     'table_name' => $metric->tableName,
@@ -86,6 +90,7 @@ class ScanPersistenceService
                 $seenIds[] = $sqlIndex->id;
 
                 if ($fragmentationAvailable && $metric->fragmentationPercent !== null) {
+                    // La snapshot histórica permite comparar evolución entre escaneos.
                     IndexSnapshot::query()->updateOrCreate([
                         'server_scan_run_id' => $scanRunId,
                         'sql_index_id' => $sqlIndex->id,
@@ -106,6 +111,8 @@ class ScanPersistenceService
             }
 
             if ($result->capabilities->hasViewDefinition === true) {
+                // Solo marcamos como "Dropped" cuando el inventario puede considerarse completo.
+                // Si no, preferimos no tocar esos registros para evitar falsos positivos.
                 SqlIndex::query()
                     ->where('server_id', $server->id)
                     ->when($seenIds !== [], fn ($query) => $query->whereNotIn('id', $seenIds))
@@ -191,6 +198,8 @@ class ScanPersistenceService
             $sustainedPageSplitIndexes = isset($result->warnings['page_splits'])
                 ? (int) data_get($previousDetails, 'sustained_page_splits.count', 0)
                 : $sustainedPageSplitIndexes;
+            // El health score solo se calcula completo si hay baseline suficiente.
+            // Si faltan componentes, se marca como incompleto para no inventar precisión.
             $health = $missingBaselines === []
                 ? $this->healthScore->calculate(
                     $criticalIndexes,
@@ -210,6 +219,8 @@ class ScanPersistenceService
                 'health_score_updated_at' => $scannedAt,
             ])->save();
 
+            // Solo después de persistir todo se calculan alertas, porque dependen
+            // de los datos nuevos y de las métricas históricas.
             $alertsCreated = $this->alerts->detect($server->refresh(), $result);
 
             return new ScanPersistenceResult(

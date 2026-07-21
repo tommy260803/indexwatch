@@ -10,6 +10,8 @@ class MaintenanceWindowResolver
 {
     public function resolveNextWindow(Server $server, ?CarbonImmutable $from = null): ?CarbonImmutable
     {
+        // Resuelve la próxima ventana a partir del reloj del servidor, no del servidor web.
+        // Eso evita errores cuando el monitoreo está en otra zona horaria.
         $from = $from ?? CarbonImmutable::now($server->timezone);
         $dayOfWeek = (int) $from->format('w'); // 0=Sunday ... 6=Saturday
 
@@ -23,18 +25,18 @@ class MaintenanceWindowResolver
             $start = $this->makeWindowStart($from, $window);
             $end = $this->makeWindowEnd($from, $window);
 
-            // If window hasn't started yet today, use it
+            // Si la ventana aún no empieza hoy, esa es la próxima ejecución válida.
             if ($from->lt($start)) {
                 return $start;
             }
 
-            // If window is active now, use now
+            // Si ya estamos dentro de la ventana, la acción puede ejecutarse ya.
             if ($from->gte($start) && $from->lt($end)) {
                 return $from;
             }
         }
 
-        // No more windows today, check from tomorrow onward
+        // Si ya no queda ventana hoy, se busca desde el siguiente día.
         return $this->findNextDayWithWindow($server, $from);
     }
 
@@ -51,16 +53,17 @@ class MaintenanceWindowResolver
 
     public function isWithinWindow(Server $server, ?CarbonImmutable $at = null): bool
     {
+        // Para ventanas que cruzan medianoche, no basta con mirar el día actual.
+        // También hay que revisar el día anterior con el reloj actual.
         $at = $at ?? CarbonImmutable::now($server->timezone);
         $dayOfWeek = (int) $at->format('w');
 
-        // Check today's windows
+        // Primer intento: ventanas del día actual.
         if ($this->dayHasActiveWindow($server, $at, $at, $dayOfWeek)) {
             return true;
         }
 
-        // Also check previous day's windows for early morning — a window stored
-        // as Sunday 23:00–02:00 is still active at Monday 00:30.
+        // Segundo intento: una ventana que empezó ayer y sigue abierta hoy.
         $prevDay = $at->subDay();
         $prevDayOfWeek = (int) $prevDay->format('w');
 
@@ -125,8 +128,8 @@ class MaintenanceWindowResolver
         $start = $dateInTz->setTimeFromTimeString($window->start_time);
         $end = $dateInTz->setTimeFromTimeString($window->end_time);
 
-        // Handle windows that cross midnight (e.g., 23:00–02:00).
-        // Strictly less-than: if start == end it's a zero-length window, not midnight-crossing.
+        // Si el cierre queda antes que la apertura, la ventana cruza medianoche.
+        // En ese caso se suma un día al cierre para conservar el intervalo correcto.
         if ($end->lt($start)) {
             $end = $end->addDay();
         }

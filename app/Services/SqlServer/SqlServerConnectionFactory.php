@@ -13,10 +13,14 @@ class SqlServerConnectionFactory
 
     public function connect(Server $server): Connection
     {
+        // La integración depende del driver nativo de SQL Server.
+        // Si el entorno no lo tiene, es mejor fallar de inmediato con un mensaje claro.
         if (! extension_loaded('pdo_sqlsrv')) {
             throw new RuntimeException('The pdo_sqlsrv PHP extension is required.');
         }
 
+        // No se usa una conexión global porque cada servidor puede tener credenciales,
+        // timeout y opciones TLS distintas.
         $name = $this->connectionName($server);
         $options = $server->connection_options ?? [];
         $timeout = max(1, min(300, (int) ($options['timeout'] ?? config('indexwatch.scan.statement_timeout', 60))));
@@ -46,6 +50,7 @@ class SqlServerConnectionFactory
             'options' => $pdoOptions,
         ]);
 
+        // Purge garantiza que no reusamos una conexión vieja con configuración distinta.
         $this->database->purge($name);
         $connection = $this->database->connection($name);
         $connection->getPdo();
@@ -55,6 +60,7 @@ class SqlServerConnectionFactory
 
     public function disconnect(Server $server): void
     {
+        // Esto evita fugas de estado entre servidores y deja limpio el contenedor.
         $name = $this->connectionName($server);
         $this->database->purge($name);
         config()->set("database.connections.{$name}", null);

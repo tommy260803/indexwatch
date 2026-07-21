@@ -24,12 +24,16 @@ class ServerScanService
 
     public function scan(Server $server, ?string $correlationId = null): ServerScanRun
     {
+        // Guardamos el inicio para poder registrar duración real y correlacionar
+        // todos los eventos de este escaneo en logs, BD y alertas.
         $startedAt = now();
         $startedNs = hrtime(true);
         $run = ServerScanRun::query()->firstOrNew([
             'correlation_id' => $correlationId ?? (string) Str::uuid(),
         ]);
 
+        // La correlación hace que un reintento no vuelva a persistir el mismo resultado.
+        // Esto es importante porque el job puede reejecutarse por fallos de cola.
         if ($run->exists && in_array($run->status, [
             ScanRunStatus::Success,
             ScanRunStatus::Degraded,
@@ -37,6 +41,8 @@ class ServerScanService
             return $run;
         }
 
+        // Antes de conectar, dejamos evidencia de que el proceso arrancó.
+        // Así el dashboard puede reflejar actividad aunque la ejecución tarde.
         $run->forceFill([
             'server_id' => $server->id,
             'status' => ScanRunStatus::Running,
@@ -52,6 +58,10 @@ class ServerScanService
         ])->save();
 
         try {
+            // Flujo principal:
+            // 1) abrir conexión temporal al servidor monitoreado
+            // 2) inspeccionar inventario, uso, fragmentación y estadísticas
+            // 3) guardar resultados y derivar alertas
             $connection = $this->connections->connect($server);
             $inspection = $this->inspector->inspect($connection, $server->minimum_index_pages);
             $persistence = $this->persistence->persist($server, $inspection, now(), $run->id);
@@ -91,6 +101,8 @@ class ServerScanService
 
             return $run->refresh();
         } catch (Throwable $exception) {
+            // El error crudo puede revelar cadenas de conexión, nombres internos o
+            // detalles de SQL Server. Se guarda una versión sanitizada.
             $safeError = $this->errors->sanitize($exception, $server);
             $finishedAt = now();
             $durationMs = $this->durationMs($startedNs);
@@ -117,6 +129,7 @@ class ServerScanService
 
             throw $exception;
         } finally {
+            // La conexión es temporal; siempre se destruye para no acumular recursos.
             $this->connections->disconnect($server);
         }
     }

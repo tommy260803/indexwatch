@@ -14,6 +14,8 @@ use Throwable;
 
 class SqlServerInspectorService
 {
+    // El inventario es la base del análisis: lista cada índice físico existente.
+    // Sobre esa lista se cruzan fragmentación, uso, estadísticas y page splits.
     private const INVENTORY_QUERY = <<<'SQL'
         SET NOCOUNT ON;
 
@@ -37,6 +39,8 @@ class SqlServerInspectorService
           AND idx.name IS NOT NULL;
         SQL;
 
+    // Fragmentación física: esta métrica ayuda a decidir si un índice necesita
+    // reorganización o rebuild, según el nivel de degradación.
     private const FRAGMENTATION_QUERY = <<<'SQL'
         SET NOCOUNT ON;
 
@@ -72,6 +76,8 @@ class SqlServerInspectorService
         OPTION (MAXDOP 1);
         SQL;
 
+    // Las DMVs de uso muestran cuántas veces se consulta o modifica cada índice.
+    // Con eso se detectan índices poco útiles y se calcula fill factor sugerido.
     private const USAGE_QUERY = <<<'SQL'
         SET NOCOUNT ON;
 
@@ -98,6 +104,8 @@ class SqlServerInspectorService
           AND idx.is_hypothetical = 0;
         SQL;
 
+    // Las estadísticas obsoletas hacen que el optimizador elija planes malos.
+    // Esta consulta ayuda a detectar cuándo toca actualizar estadísticas.
     private const STATISTICS_QUERY = <<<'SQL'
         SET NOCOUNT ON;
 
@@ -123,6 +131,8 @@ class SqlServerInspectorService
         WHERE tbl.is_ms_shipped = 0;
         SQL;
 
+    // Los page splits suelen subir cuando un índice está mal ajustado para la carga.
+    // Por eso se guardan para ver tendencia, no solo una foto aislada.
     private const PAGE_SPLITS_QUERY = <<<'SQL'
         SET NOCOUNT ON;
 
@@ -144,6 +154,8 @@ class SqlServerInspectorService
         OPTION (MAXDOP 1);
         SQL;
 
+    // Missing indexes no crea nada por sí solo, pero aporta candidatos con impacto
+    // estimado para que el sistema pueda priorizar recomendaciones.
     private const MISSING_INDEXES_QUERY = <<<'SQL'
         SET NOCOUNT ON;
 
@@ -178,6 +190,8 @@ class SqlServerInspectorService
 
     public function inspect(Connection $connection, int $minimumIndexPages): InspectionResult
     {
+        // Primero se detectan capacidades del servidor y luego se decide qué métricas
+        // conviene ejecutar. Así evitamos consultas que el entorno no soporta.
         $capabilities = $this->capabilityService->inspect($connection);
         $warnings = [];
 
@@ -204,6 +218,8 @@ class SqlServerInspectorService
         $indexes = [];
 
         foreach ($inventory as $row) {
+            // Cada fila del inventario se convierte en un DTO rico con métricas cruzadas.
+            // El objetivo es tener un objeto ya listo para persistir y evaluar alertas.
             $key = $this->key($row->object_id, $row->index_id);
             $physical = $fragmentationByKey[$key] ?? null;
             $counters = $usageByKey[$key] ?? null;
@@ -233,6 +249,7 @@ class SqlServerInspectorService
             );
         }
 
+        // El resultado final encapsula todo el estado recolectado durante la inspección.
         return new InspectionResult(
             capabilities: $capabilities,
             indexes: $indexes,
@@ -294,6 +311,8 @@ class SqlServerInspectorService
         array &$warnings,
     ): array {
         try {
+            // Algunas métricas pueden fallar por permisos o versión del motor.
+            // En esos casos devolvemos vacío y registramos una advertencia.
             return $connection->select($query, $bindings);
         } catch (Throwable $exception) {
             $code = $exception->getCode();
@@ -326,6 +345,7 @@ class SqlServerInspectorService
             return null;
         }
 
+        // Normaliza fechas del driver a un tipo estándar de PHP/Laravel.
         return $value instanceof DateTimeInterface ? $value : new DateTimeImmutable((string) $value);
     }
 }

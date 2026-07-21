@@ -11,6 +11,8 @@ use InvalidArgumentException;
 
 class TsqlGeneratorService
 {
+    // Aquí no se ejecuta SQL; solo se construyen scripts seguros a partir de datos
+    // ya validados por el dominio. Las listas blancas limitan el riesgo.
     private const ALLOWED_REBUILD_OPTIONS = [
         'ONLINE' => ['ON', 'OFF'],
         'MAXDOP' => null, // integer, validated separately
@@ -28,12 +30,15 @@ class TsqlGeneratorService
 
     public function generate(Alert $alert): string
     {
+        // La acción puede venir de la recomendación original o de la respuesta del contacto.
+        // Eso permite generar el script final aunque el flujo haya pasado por WhatsApp.
         $action = $alert->recommended_action?->value ?? $alert->responded_action?->value;
 
         if (! $action) {
             throw new InvalidArgumentException('Alert has no recommended or responded action');
         }
 
+        // Cada acción se traduce a un script concreto. Si no está soportada, falla.
         return match ($action) {
             RecommendedAction::Rebuild->value => $this->generateRebuild($alert),
             RecommendedAction::Reorganize->value => $this->generateReorganize($alert),
@@ -48,6 +53,8 @@ class TsqlGeneratorService
 
     private function generateRebuild(Alert $alert): string
     {
+        // REBUILD es la opción más pesada: reconstruye el índice y puede cambiar fill factor.
+        // ONLINE solo se activa si el servidor confirmó soporte para operaciones en línea.
         $index = $this->getIndex($alert);
         $fillFactor = $this->clampFillFactor($index->fill_factor ?? 90);
         $onlineOption = $this->supportsOnline($alert->server) ? 'ONLINE = ON, ' : '';
@@ -100,6 +107,7 @@ class TsqlGeneratorService
 
     private function generateCreateIndex(Alert $alert): string
     {
+        // CREATE INDEX depende de metadata del missing index. Si no existe, no adivinamos.
         $metadata = $alert->metadata ?? [];
 
         $schema = $metadata['schema_name'] ?? 'dbo';
@@ -204,6 +212,8 @@ class TsqlGeneratorService
      */
     public function escapeIdentifier(string $identifier): string
     {
+        // Escapar identificadores es obligatorio porque aquí se interpolan nombres de objetos.
+        // Sin esto, un nombre extraño podría romper el script o abrir una puerta a inyección.
         if ($identifier === '') {
             throw new InvalidArgumentException('SQL identifier cannot be empty');
         }

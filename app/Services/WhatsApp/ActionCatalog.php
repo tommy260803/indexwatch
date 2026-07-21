@@ -7,10 +7,14 @@ use App\Enums\RecommendedAction;
 
 class ActionCatalog
 {
+    // El catálogo define qué botones puede mostrar WhatsApp y cómo se traducen
+    // a acciones internas del sistema.
     private const SECRET_KEY = 'whatsapp_button_hmac';
 
     public static function getAllowedActions(AlertType $alertType): array
     {
+        // No todas las acciones tienen sentido para todas las alertas.
+        // Esta tabla controla qué opciones ve el usuario en cada contexto.
         return match ($alertType) {
             AlertType::Fragmentation => [
                 'rebuild' => 'REBUILD',
@@ -56,6 +60,7 @@ class ActionCatalog
 
     public static function getRecommendedAction(string $actionKey, AlertType $alertType): ?RecommendedAction
     {
+        // Convierte la tecla del botón en el enum de dominio que entiende el backend.
         $mapping = match ($alertType) {
             AlertType::Fragmentation => [
                 'rebuild' => RecommendedAction::Rebuild,
@@ -103,6 +108,7 @@ class ActionCatalog
 
     public static function requiresDoubleConfirmation(string $actionKey, AlertType $alertType): bool
     {
+        // Algunas acciones son suficientemente riesgosas como para pedir confirmación extra.
         $action = self::getRecommendedAction($actionKey, $alertType);
 
         return $action?->requiresDoubleConfirmation() ?? false;
@@ -114,6 +120,7 @@ class ActionCatalog
      */
     public static function makeButtonId(string $actionKey, int $alertId): string
     {
+        // El ID incluye firma HMAC para que no se pueda fabricar un botón válido.
         $payload = "{$actionKey}|{$alertId}";
         $signature = self::sign($payload);
 
@@ -125,6 +132,7 @@ class ActionCatalog
      */
     public static function parseButtonId(string $buttonId): ?array
     {
+        // Primero separa acción, alerta y firma; luego verifica que nadie alteró el payload.
         $parts = explode('_', $buttonId);
         if (count($parts) < 3) {
             return null;
@@ -156,6 +164,7 @@ class ActionCatalog
 
     private static function sign(string $payload): string
     {
+        // El secreto real viene del app secret; en local/test se usa un fallback estable.
         $secret = config('services.whatsapp.app_secret', '');
 
         if ($secret === '') {
